@@ -6,6 +6,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
     python3-dev \
     intel-opencl-icd \
+    intel-level-zero-gpu level-zero \
+    intel-media-va-driver-non-free \
     && rm -rf /var/lib/apt/lists/*
 
 RUN pip3 install --no-cache-dir --upgrade pip && \
@@ -13,7 +15,7 @@ RUN pip3 install --no-cache-dir --upgrade pip && \
     pip3 install --no-cache-dir \
     "optimum-intel[openvino]" \
     "transformers>=4.45.0" \
-    soundfile \
+    "soundfile" \
     "wyoming==1.5.2" \
     "numpy<2.0.0"
 
