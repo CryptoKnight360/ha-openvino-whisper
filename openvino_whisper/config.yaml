@@ -1,12 +1,12 @@
 name: "OpenVINO Whisper STT"
 slug: "openvino_whisper"
 description: "Intel OpenVINO accelerated Whisper STT"
-version: "2.0.2"
+version: "2.0.3"
 startup: services
 boot: auto
 host_network: true
-privileged:
-  - ARM_ITI_DRM  # This helps with GPU access on some Intel boards
+devices:
+  - /dev/dri:/dev/dri
 ports:
   10300/tcp: 10300
 options:
