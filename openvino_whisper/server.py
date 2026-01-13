@@ -1,56 +1,109 @@
+import asyncio
+import logging
+import os
 import time
 import numpy as np
-import webrtcvad
-from wyoming.server import AsyncServer
-from wyoming.stt import SpeechToText
+from typing import Optional
+
 from optimum.intel.openvino import OVSpeechSeq2SeqPipeline
-from transformers import AutoProcessor
+from wyoming.audio import AudioChunk, AudioStop
+from wyoming.event import Event
+from wyoming.info import Describe, Info, Model, ModelType, SttModel, SttProgram
+from wyoming.server import AsyncEventHandler, AsyncServer
+from wyoming.stt import Transcribe, Transcription
 
-MODEL_NAME = "OpenVINO/whisper-small-int8-ov"
-DEVICE = "AUTO"
+# Configure Logging
+logging.basicConfig(level=logging.INFO)
+_LOGGER = logging.getLogger(__name__)
 
-class OpenVINOWhisperSTT(SpeechToText):
-    def __init__(self):
-        self.vad = webrtcvad.Vad(2)
-        self.processor = AutoProcessor.from_pretrained(MODEL_NAME)
-        self.pipe = OVSpeechSeq2SeqPipeline.from_pretrained(
-            MODEL_NAME,
-            device=DEVICE
-        )
+# Environment variables
+MODEL_ID = os.getenv("MODEL_ID", "OpenVINO/whisper-small-int8-ov")
+DEVICE = os.getenv("DEVICE", "AUTO")
 
-    def apply_vad(self, audio, rate):
-        frame_len = int(rate * 0.02)
-        voiced = []
-        for i in range(0, len(audio), frame_len):
-            frame = audio[i:i+frame_len]
-            if len(frame) < frame_len:
-                continue
-            pcm = (frame * 32768).astype(np.int16).tobytes()
-            if self.vad.is_speech(pcm, rate):
-                voiced.extend(frame)
-        return np.array(voiced, dtype=np.float32)
+class OpenVINOWhisperHandler(AsyncEventHandler):
+    def __init__(self, wyoming_info: Info, pipe: OVSpeechSeq2SeqPipeline, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.wyoming_info = wyoming_info
+        self.pipe = pipe
+        self.audio_buffer = bytearray()
 
-    async def transcribe(self, audio: bytes, rate: int):
-        start = time.time()
-        samples = np.frombuffer(audio, dtype=np.int16).astype(np.float32) / 32768.0
-        samples = self.apply_vad(samples, rate)
+    async def handle_event(self, event: Event) -> bool:
+        if Transcribe.is_type(event.type):
+            # Client wants to start transcribing
+            pass
+        
+        elif AudioChunk.is_type(event.type):
+            # Receive audio data
+            chunk = AudioChunk.from_event(event)
+            self.audio_buffer.extend(chunk.audio)
 
-        if len(samples) == 0:
-            return ""
+        elif AudioStop.is_type(event.type):
+            # End of audio stream - perform inference
+            _LOGGER.info("Audio received, transcribing...")
+            start_time = time.perf_counter()
+            
+            # Convert buffer to float32 numpy array (normalized)
+            audio_array = np.frombuffer(self.audio_buffer, dtype=np.int16).astype(np.float32) / 32768.0
+            
+            # Run OpenVINO Inference
+            # Whisper expects 16000Hz. Wyoming protocol usually sends 16000Hz.
+            result = self.pipe(audio_array, sampling_rate=16000)
+            text = result["text"].strip()
+            
+            inference_ms = (time.perf_counter() - start_time) * 1000
+            _LOGGER.info(f"Transcription: {text} (Latency: {inference_ms:.1f}ms)")
 
-        result = self.pipe(samples, sampling_rate=rate)
-        text = result["text"].strip()
+            # Send result back to Wyoming client
+            await self.write_event(Transcription(text=text).event())
+            
+            # Return False to close the connection after one transcription
+            return False
 
-        latency = (time.time() - start) * 1000
-        print(f"STT latency: {latency:.1f} ms")
+        elif Describe.is_type(event.type):
+            await self.write_event(self.wyoming_info.event())
 
-        return text
+        return True
 
 async def main():
+    _LOGGER.info(f"Loading model {MODEL_ID} to {DEVICE}...")
+    
+    # Load model once at startup
+    pipe = OVSpeechSeq2SeqPipeline.from_pretrained(
+        MODEL_ID,
+        device=DEVICE,
+        compile=True
+    )
+
+    # Define Wyoming Info for Home Assistant discovery
+    wyoming_info = Info(
+        stt=[
+            SttProgram(
+                name="OpenVINO Whisper",
+                slug="openvino_whisper",
+                description="Intel OpenVINO accelerated Whisper STT",
+                version="2.0.0",
+                models=[
+                    SttModel(
+                        name=MODEL_ID,
+                        slug=MODEL_ID,
+                        description="Quantized Whisper",
+                        attribution={"name": "Intel", "url": "https://github.com/openvinotoolkit/openvino"},
+                        installed=True,
+                        languages=["en"], # Add more as needed
+                        version="1.0"
+                    )
+                ]
+            )
+        ]
+    )
+
     server = AsyncServer.from_uri("tcp://0.0.0.0:10300")
-    stt = OpenVINOWhisperSTT()
-    await server.run(stt)
+    _LOGGER.info("Ready! Listening on port 10300")
+    
+    await server.run(lambda: OpenVINOWhisperHandler(wyoming_info, pipe))
 
 if __name__ == "__main__":
-    import asyncio
-    asyncio.run(main())
+    try:
+        asyncio.run(main())
+    except KeyboardInterrupt:
+        pass
