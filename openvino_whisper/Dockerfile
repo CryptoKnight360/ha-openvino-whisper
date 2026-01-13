@@ -1,21 +1,22 @@
-FROM python:3.11-slim-bookworm
+FROM ghcr.io/home-assistant/amd64-base-python:3.12-bookworm
 
-USER root
+# System dependencies for OpenVINO and Audio
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    ffmpeg build-essential python3-dev intel-opencl-icd \
-    && rm -rf /var/lib/apt/lists/*
+    ffmpeg intel-opencl-icd && \
+    rm -rf /var/lib/apt/lists/*
 
-RUN pip3 install --no-cache-dir --upgrade pip && \
-    pip3 install --no-cache-dir torch --index-url https://download.pytorch.org/whl/cpu && \
+# Install specific versions as per report
+RUN pip3 install --no-cache-dir torch --index-url https://download.pytorch.org/whl/cpu && \
     pip3 install --no-cache-dir \
     "optimum-intel[openvino]" \
     "transformers>=4.45.0" \
-    "soundfile" \
-    "wyoming==1.5.2" \
+    "wyoming==1.8.0" \
     "numpy<2.0.0"
 
+# Copy the server script
+COPY server.py /app/server.py
 WORKDIR /app
-COPY server.py ./
-RUN chmod +x server.py
 
-ENTRYPOINT ["python3", "/app/server.py"]
+# Copy the S6-overlay configuration
+COPY rootfs /
+RUN chmod a+x /app/server.py
