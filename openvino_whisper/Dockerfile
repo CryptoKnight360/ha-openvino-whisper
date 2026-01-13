@@ -2,14 +2,14 @@ FROM python:3.11-slim-bookworm
 
 USER root
 
-# Fix for "exit code 100": Enable non-free repositories for Intel drivers
-RUN sed -i 's/components = main/components = main contrib non-free non-free-firmware/g' /etc/apt/sources.list.d/debian.sources && \
-    apt-get update && apt-get install -y --no-install-recommends \
-    ffmpeg \
-    build-essential \
-    python3-dev \
-    intel-opencl-icd \
-    libze1 \
+# Install tools to add Intel's official repository
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    wget gpg ca-certificates \
+    && wget -qO - https://repositories.intel.com/graphics/intel-graphics.key | gpg --dearmor --output /usr/share/keyrings/intel-graphics.gpg \
+    && echo "deb [arch=amd64 signed-by=/usr/share/keyrings/intel-graphics.gpg] https://repositories.intel.com/graphics/ubuntu jammy main" > /etc/apt/sources.list.d/intel.list \
+    && apt-get update && apt-get install -y --no-install-recommends \
+    ffmpeg build-essential python3-dev \
+    intel-opencl-icd intel-level-zero-gpu level-zero \
     && rm -rf /var/lib/apt/lists/*
 
 # Install Python stack
