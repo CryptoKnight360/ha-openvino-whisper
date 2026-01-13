@@ -3,19 +3,23 @@ import logging
 import os
 import time
 import numpy as np
+
+# Optimum Intel & Transformers
 from optimum.intel.openvino import OVModelForSpeechSeq2Seq
 from transformers import AutoProcessor, pipeline
+
+# Wyoming Protocol
+from wyoming.asr import Transcribe, Transcript
 from wyoming.audio import AudioChunk, AudioStop
 from wyoming.event import Event
-from wyoming.info import Describe, Info, Model, Program
+from wyoming.info import AsrModel, AsrProgram, Attribution, Describe, Info
 from wyoming.server import AsyncEventHandler, AsyncServer
-from wyoming.stt import Transcribe, Transcription
 
 # Configure Logging
 logging.basicConfig(level=logging.INFO)
 _LOGGER = logging.getLogger(__name__)
 
-# Environment variables
+# Environment variables from config.yaml
 MODEL_ID = os.getenv("MODEL_ID", "openai/whisper-large-v3-turbo")
 DEVICE = os.getenv("DEVICE", "AUTO")
 
@@ -39,14 +43,15 @@ class OpenVINOWhisperHandler(AsyncEventHandler):
             audio_array = np.frombuffer(self.audio_buffer, dtype=np.int16).astype(np.float32) / 32768.0
             
             # Run Inference
+            # The pipeline handles the OpenVINO model logic internally
             result = self.pipe(audio_array)
             text = result["text"].strip()
             
             inference_ms = (time.perf_counter() - start_time) * 1000
             _LOGGER.info(f"Transcription: {text} (Latency: {inference_ms:.1f}ms)")
 
-            # Send back the transcription
-            await self.write_event(Transcription(text=text).event())
+            # Send back the transcript event (Verified name: Transcript)
+            await self.write_event(Transcript(text=text).event())
             return False
 
         elif Describe.is_type(event.type):
@@ -55,9 +60,10 @@ class OpenVINOWhisperHandler(AsyncEventHandler):
         return True
 
 async def main():
-    _LOGGER.info(f"Loading {MODEL_ID} to {DEVICE} (This takes a few minutes on first run)...")
+    _LOGGER.info(f"Loading {MODEL_ID} to {DEVICE}...")
+    _LOGGER.info("NOTE: First run converts model to OpenVINO format. This takes 3-5 minutes.")
     
-    # Load the model - using the verified OVModelForSpeechSeq2Seq class
+    # Load model using verified class: OVModelForSpeechSeq2Seq
     model = OVModelForSpeechSeq2Seq.from_pretrained(
         MODEL_ID,
         device=DEVICE,
@@ -67,6 +73,7 @@ async def main():
     
     processor = AutoProcessor.from_pretrained(MODEL_ID)
     
+    # Standard Transformers pipeline compatible with OpenVINO
     pipe = pipeline(
         "automatic-speech-recognition",
         model=model,
@@ -75,21 +82,25 @@ async def main():
         chunk_length_s=30
     )
 
-    # Corrected naming: Model and Program (not SttModel/SttProgram)
+    # Verified Wyoming Info Schema for ASR
     wyoming_info = Info(
-        stt=[
-            Program(
+        asr=[
+            AsrProgram(
                 name="OpenVINO Whisper",
                 slug="openvino_whisper",
                 description="Intel OpenVINO accelerated Whisper STT",
-                version="2.1.3",
+                version="2.1.4",
                 models=[
-                    Model(
+                    AsrModel(
                         name=MODEL_ID,
                         slug=MODEL_ID,
                         description="Large Turbo Whisper",
                         installed=True,
-                        languages=["en"]
+                        languages=["en"],
+                        attribution=Attribution(
+                            name="OpenAI",
+                            url="https://github.com/openai/whisper"
+                        )
                     )
                 ]
             )
