@@ -1,7 +1,7 @@
 name: "OpenVINO Whisper STT"
 slug: "openvino_whisper"
 description: "Intel OpenVINO accelerated Whisper STT"
-version: "2.1.0"
+version: "2.1.1"
 arch:
   - amd64
 startup: services
@@ -10,7 +10,7 @@ host_network: true
 ports:
   10300/tcp: 10300
 options:
-  model: "OpenVINO/whisper-small-int8-ov"
+  model: "openai/whisper-large-v3-turbo"
   device: "AUTO"
 schema:
   model: str
