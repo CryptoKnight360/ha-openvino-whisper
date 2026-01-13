@@ -1,12 +1,16 @@
-# This allows the Supervisor to inject the correct base image automatically
-ARG BUILD_FROM=ghcr.io/home-assistant/amd64-base-python:3.12-bookworm
-FROM ${BUILD_FROM}
+FROM ghcr.io/home-assistant/amd64-base-debian:bookworm
 
-# Install system dependencies for OpenVINO and Audio
+# Install Python, ffmpeg, and Intel GPU drivers via apt
 RUN apt-get update && apt-get install -y --no-install-recommends \
+    python3 \
+    python3-pip \
+    python3-dev \
     ffmpeg \
     intel-opencl-icd \
     && rm -rf /var/lib/apt/lists/*
+
+# Required to install python packages on Debian Bookworm
+ENV PIP_BREAK_SYSTEM_PACKAGES=1
 
 # Install requirements exactly as the report specifies
 RUN pip3 install --no-cache-dir torch --index-url https://download.pytorch.org/whl/cpu && \
@@ -16,10 +20,8 @@ RUN pip3 install --no-cache-dir torch --index-url https://download.pytorch.org/w
     "wyoming==1.8.0" \
     "numpy<2.0.0"
 
-# Set up the application
 WORKDIR /app
 COPY server.py /app/server.py
 COPY rootfs /
 
-# Ensure the server script is executable
 RUN chmod a+x /app/server.py
