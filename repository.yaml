@@ -1,0 +1,8 @@
+name: OpenVINO Whisper Add-on
+slug: openvino-whisper
+description: Home Assistant Add-on for Whisper using Intel OpenVINO
+version: "1.0.0"
+url: https://github.com/CryptoKnight360/ha-openvino-whisper
+startup: services
+arch:
+  - amd64
