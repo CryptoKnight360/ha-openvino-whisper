@@ -1,38 +1,32 @@
-FROM ghcr.io/intel/openvino/runtime:latest
+FROM python:3.11-slim-bookworm
 
+# Use root for setup
 USER root
 
 # Install system dependencies
-RUN apt-get update && apt-get install -y \
-    python3-pip \
-    python3-dev \
-    build-essential \
+RUN apt-get update && apt-get install -y --no-install-recommends \
     ffmpeg \
-    sox \
+    build-essential \
+    python3-dev \
     && rm -rf /var/lib/apt/lists/*
 
-# Upgrade pip and install Python requirements
-# We use the CPU version of torch to keep the image size down
+# Install Python packages
+# We install torch CPU-only to save massive amounts of space
 RUN pip3 install --no-cache-dir --upgrade pip && \
     pip3 install --no-cache-dir \
-    wyoming==1.5.2 \
-    openvino \
-    "optimum[openvino]" \
+    torch --index-url https://download.pytorch.org/whl/cpu && \
+    pip3 install --no-cache-dir \
+    "optimum-intel[openvino]" \
     transformers \
     soundfile \
-    numpy \
-    torch --extra-index-url https://download.pytorch.org/whl/cpu
+    wyoming==1.5.2
 
 WORKDIR /app
-
-# Copy scripts
 COPY server.py run.sh ./
 RUN chmod +x run.sh
 
-# Set environment variables (can be overridden at runtime)
+# Environment variables
 ENV MODEL_ID="OpenVINO/whisper-small-int8-ov"
 ENV DEVICE="AUTO"
-
-EXPOSE 10300
 
 ENTRYPOINT ["/app/run.sh"]
