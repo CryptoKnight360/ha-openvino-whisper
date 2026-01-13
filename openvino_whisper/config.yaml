@@ -1,17 +1,17 @@
-name: OpenVINO Whisper STT
-slug: openvino_whisper
-description: Intel OpenVINO accelerated Whisper STT using Wyoming protocol
-version: "2.0.0"
-arch:
-  - amd64
+name: "OpenVINO Whisper STT"
+slug: "openvino_whisper"
+description: "Intel OpenVINO accelerated Whisper STT"
+version: "2.0.2"
 startup: services
 boot: auto
 host_network: true
+privileged:
+  - ARM_ITI_DRM  # This helps with GPU access on some Intel boards
 ports:
   10300/tcp: 10300
 options:
-  model: OpenVINO/whisper-small-int8-ov
-  device: AUTO
+  model: "OpenVINO/whisper-small-int8-ov"
+  device: "AUTO"
 schema:
   model: str
   device: str
