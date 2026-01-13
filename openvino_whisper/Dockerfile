@@ -15,7 +15,7 @@ RUN pip3 install --no-cache-dir --upgrade pip && \
     "numpy<2.0.0"
 
 WORKDIR /app
-COPY server.py run.sh ./
-RUN chmod +x run.sh
+COPY server.py ./
+RUN chmod +x server.py
 
-ENTRYPOINT ["/app/run.sh"]
+ENTRYPOINT ["python3", "/app/server.py"]
