@@ -1,0 +1,1 @@
+OpenVINO - Whisper Add-On
