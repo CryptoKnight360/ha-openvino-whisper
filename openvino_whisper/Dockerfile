@@ -1,13 +1,25 @@
 FROM ghcr.io/intel/openvino/runtime:latest
 
-ENV DEBIAN_FRONTEND=noninteractive
+USER root
+RUN apt-get update && apt-get install -y \
+    python3-pip ffmpeg sox build-essential python3-dev \
+    && rm -rf /var/lib/apt/lists/*
 
-RUN apt-get update && apt-get install -y     python3 python3-pip ffmpeg sox     && rm -rf /var/lib/apt/lists/*
+# Force update pip
+RUN pip3 install --upgrade pip
 
-RUN pip3 install --no-cache-dir     wyoming     openvino     optimum[openvino]     transformers     soundfile     numpy     webrtcvad     torch
+RUN pip3 install --no-cache-dir \
+    wyoming==1.5.2 \
+    openvino \
+    "optimum[openvino]" \
+    transformers \
+    soundfile \
+    webrtcvad \
+    torch --extra-index-url https://download.pytorch.org/whl/cpu
 
 WORKDIR /app
-COPY run.sh server.py benchmark.py ./
+COPY . .
 RUN chmod +x run.sh
 
-CMD ["./run.sh"]
+# Switch back to openvino user if desired, or stay root for simple setups
+ENTRYPOINT ["/bin/bash", "/app/run.sh"]
