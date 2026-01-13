@@ -2,13 +2,15 @@ import asyncio
 import logging
 import os
 import time
+import warnings
 import numpy as np
 
-# Optimum Intel & Transformers
+# Suppress TracerWarnings from the logs
+warnings.filterwarnings("ignore", category=UserWarning)
+
 from optimum.intel.openvino import OVModelForSpeechSeq2Seq
 from transformers import AutoProcessor, pipeline
 
-# Wyoming Protocol
 from wyoming.asr import Transcribe, Transcript
 from wyoming.audio import AudioChunk, AudioStop
 from wyoming.event import Event
@@ -19,7 +21,7 @@ logging.basicConfig(level=logging.INFO)
 _LOGGER = logging.getLogger(__name__)
 
 MODEL_ID = os.getenv("MODEL_ID", "openai/whisper-large-v3-turbo")
-DEVICE = os.getenv("DEVICE", "AUTO")
+DEVICE = os.getenv("DEVICE", "GPU")
 
 class OpenVINOWhisperHandler(AsyncEventHandler):
     def __init__(self, wyoming_info: Info, pipe: pipeline, *args, **kwargs):
@@ -36,6 +38,7 @@ class OpenVINOWhisperHandler(AsyncEventHandler):
             start_time = time.perf_counter()
             audio_array = np.frombuffer(self.audio_buffer, dtype=np.int16).astype(np.float32) / 32768.0
             
+            # Transcription with Intel GPU acceleration
             result = self.pipe(audio_array)
             text = result["text"].strip()
             
@@ -49,14 +52,26 @@ class OpenVINOWhisperHandler(AsyncEventHandler):
 async def main():
     _LOGGER.info(f"Loading {MODEL_ID} to {DEVICE}...")
     
-    model = OVModelForSpeechSeq2Seq.from_pretrained(MODEL_ID, device=DEVICE, export=True, compile=True)
+    # Using ov_config to prioritize latency for Voice Assist
+    ov_config = {"PERFORMANCE_HINT": "LATENCY"}
+    
+    model = OVModelForSpeechSeq2Seq.from_pretrained(
+        MODEL_ID, 
+        device=DEVICE, 
+        export=True, 
+        compile=True,
+        ov_config=ov_config
+    )
     processor = AutoProcessor.from_pretrained(MODEL_ID)
-    pipe = pipeline("automatic-speech-recognition", model=model, feature_extractor=processor.feature_extractor, tokenizer=processor.tokenizer)
     
-    # Define attribution
+    pipe = pipeline(
+        "automatic-speech-recognition", 
+        model=model, 
+        feature_extractor=processor.feature_extractor, 
+        tokenizer=processor.tokenizer
+    )
+    
     attr = Attribution(name="OpenAI", url="https://github.com/openai/whisper")
-    
-    # Metadata verified: Attribution and Version are REQUIRED
     wyoming_info = Info(
         asr=[
             AsrProgram(
@@ -64,7 +79,7 @@ async def main():
                 description="Intel OpenVINO accelerated Whisper STT",
                 attribution=attr,
                 installed=True,
-                version="3.2.0",
+                version="3.3.0",
                 models=[
                     AsrModel(
                         name=MODEL_ID,
@@ -80,7 +95,7 @@ async def main():
     )
     
     server = AsyncServer.from_uri("tcp://0.0.0.0:10300")
-    _LOGGER.info("Ready! Listening on 10300")
+    _LOGGER.info(f"Ready! Listening on 10300 (Running on {DEVICE})")
     await server.run(lambda: OpenVINOWhisperHandler(wyoming_info, pipe))
 
 if __name__ == "__main__":
