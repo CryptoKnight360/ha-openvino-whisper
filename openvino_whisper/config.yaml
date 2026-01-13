@@ -7,12 +7,9 @@ arch:
 startup: services
 boot: auto
 host_network: true
-privileged:
-  - SYS_ADMIN
+apparmor: false
 devices:
   - /dev/dri:/dev/dri
-discovery:
-  - wyoming
 ports:
   10300/tcp: 10300
 options:
