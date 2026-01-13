@@ -3,8 +3,10 @@ import logging
 import os
 import time
 import numpy as np
+
 from optimum.intel.openvino import OVModelForSpeechSeq2Seq
 from transformers import AutoProcessor, pipeline
+
 from wyoming.asr import Transcribe, Transcript
 from wyoming.audio import AudioChunk, AudioStop
 from wyoming.event import Event
@@ -15,7 +17,7 @@ logging.basicConfig(level=logging.INFO)
 _LOGGER = logging.getLogger(__name__)
 
 MODEL_ID = os.getenv("MODEL_ID", "openai/whisper-large-v3-turbo")
-DEVICE = "CPU"
+DEVICE = "CPU"  # Locked to CPU for stability
 
 class OpenVINOWhisperHandler(AsyncEventHandler):
     def __init__(self, wyoming_info: Info, pipe: pipeline, *args, **kwargs):
@@ -28,46 +30,76 @@ class OpenVINOWhisperHandler(AsyncEventHandler):
         if Describe.is_type(event.type):
             await self.write_event(self.wyoming_info.event())
             return True
+
         if AudioChunk.is_type(event.type):
-            self.audio_buffer.extend(AudioChunk.from_event(event).audio)
+            chunk = AudioChunk.from_event(event)
+            self.audio_buffer.extend(chunk.audio)
             return True
+
         if AudioStop.is_type(event.type):
-            start = time.perf_counter()
-            audio = np.frombuffer(self.audio_buffer, dtype=np.int16).astype(np.float32) / 32768.0
-            result = self.pipe(audio)
-            _LOGGER.info(f"Text: {result['text']} ({(time.perf_counter() - start)*1000:.0f}ms)")
-            await self.write_event(Transcript(text=result['text'].strip()).event())
+            _LOGGER.info("Audio received. Starting transcription...")
+            start_time = time.perf_counter()
+            audio_array = np.frombuffer(self.audio_buffer, dtype=np.int16).astype(np.float32) / 32768.0
+            
+            result = self.pipe(audio_array)
+            text = result["text"].strip()
+            
+            _LOGGER.info(f"Result: {text} (Latency: {(time.perf_counter() - start_time)*1000:.0f}ms)")
+            await self.write_event(Transcript(text=text).event())
             return False
+
         return True
 
 async def main():
-    _LOGGER.info(f"Loading {MODEL_ID}...")
-    model = OVModelForSpeechSeq2Seq.from_pretrained(MODEL_ID, device=DEVICE, export=True, compile=True)
-    proc = AutoProcessor.from_pretrained(MODEL_ID)
-    pipe = pipeline("automatic-speech-recognition", model=model, feature_extractor=proc.feature_extractor, tokenizer=proc.tokenizer)
+    _LOGGER.info(f"Loading Model: {MODEL_ID}")
     
+    # Load via Optimum Intel
+    model = OVModelForSpeechSeq2Seq.from_pretrained(
+        MODEL_ID, 
+        device=DEVICE, 
+        export=True, 
+        compile=True
+    )
+    processor = AutoProcessor.from_pretrained(MODEL_ID, use_fast=True)
+    pipe = pipeline(
+        "automatic-speech-recognition", 
+        model=model, 
+        feature_extractor=processor.feature_extractor, 
+        tokenizer=processor.tokenizer
+    )
+    
+    # Metadata using verified Keyword Arguments
     attr = Attribution(name="OpenAI", url="https://github.com/openai/whisper")
+    wyoming_info = Info(
+        asr=[
+            AsrProgram(
+                name="OpenVINO Whisper",
+                description="Intel OpenVINO accelerated Whisper STT",
+                attribution=attr,
+                version="16.0.0",
+                installed=True,
+                models=[
+                    AsrModel(
+                        name=MODEL_ID,
+                        description="Large Turbo Whisper",
+                        attribution=attr,
+                        version="1.0",
+                        languages=["en"],
+                        installed=True
+                    )
+                ]
+            )
+        ]
+    )
     
-    # Corrected: Added 'installed=True' to both classes
-    wyoming_info = Info(asr=[AsrProgram(
-        name="OpenVINO Whisper",
-        description="Whisper STT",
-        attribution=attr,
-        version="15.0.0",
-        installed=True,
-        models=[AsrModel(
-            name=MODEL_ID, 
-            description="Turbo", 
-            attribution=attr, 
-            version="1.0", 
-            languages=["en"],
-            installed=True
-        )]
-    )])
-
-    server = AsyncServer.from_uri("tcp://0.0.0.0:10300")
-    _LOGGER.info("Ready!")
+    # Port Assignment
+    port = 10300
+    server = AsyncServer.from_uri(f"tcp://0.0.0.0:{port}")
+    _LOGGER.info(f"READY! Wyoming server listening on port {port}")
     await server.run(lambda: OpenVINOWhisperHandler(wyoming_info, pipe))
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    try:
+        asyncio.run(main())
+    except KeyboardInterrupt:
+        pass
