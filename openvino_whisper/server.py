@@ -42,8 +42,11 @@ async def main():
     model_id = os.getenv("MODEL_ID")
     device = os.getenv("DEVICE")
     
+    _LOGGER.info(f"Loading {model_id} on {device}...")
     model = OVModelForSpeechSeq2Seq.from_pretrained(model_id, device=device, export=True, compile=True)
     proc = AutoProcessor.from_pretrained(model_id)
+    
+    # Use feature_extractor (NOT extractor) to match Transformers API
     pipe = pipeline("automatic-speech-recognition", model=model, feature_extractor=proc.feature_extractor, tokenizer=proc.tokenizer)
 
     attr = Attribution(name="OpenAI", url="https://openai.com")
@@ -53,6 +56,7 @@ async def main():
     )])
 
     server = AsyncServer.from_uri("tcp://0.0.0.0:10300")
+    _LOGGER.info("Ready and listening on port 10300")
     await server.run(lambda: OpenVINOWhisperHandler(wyoming_info, pipe))
 
 if __name__ == "__main__":
