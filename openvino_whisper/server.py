@@ -34,7 +34,6 @@ class OpenVINOWhisperHandler(AsyncEventHandler):
             start_time = time.perf_counter()
             audio_array = np.frombuffer(self.audio_buffer, dtype=np.int16).astype(np.float32) / 32768.0
             
-            # Inference logic
             result = self.pipe(audio_array)
             text = result["text"].strip()
             
@@ -48,7 +47,6 @@ class OpenVINOWhisperHandler(AsyncEventHandler):
 async def main():
     _LOGGER.info(f"Loading {MODEL_ID} to {DEVICE}...")
     
-    # Load with GPU/CPU fallback logic
     try:
         model = OVModelForSpeechSeq2Seq.from_pretrained(
             MODEL_ID, device=DEVICE, export=True, compile=True,
@@ -70,7 +68,7 @@ async def main():
         tokenizer=processor.tokenizer
     )
     
-    # Verified Wyoming Constructor Arguments: (name, description, attribution, version, models/languages)
+    # 5 Positional Arguments: (name, description, attribution, version, models/languages)
     attr = Attribution("OpenAI", "https://github.com/openai/whisper")
     wyoming_info = Info(
         asr=[
@@ -78,7 +76,7 @@ async def main():
                 "OpenVINO Whisper",
                 "Intel OpenVINO accelerated Whisper STT",
                 attr,
-                "6.0.0",
+                "7.0.0",
                 [
                     AsrModel(
                         MODEL_ID,
