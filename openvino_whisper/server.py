@@ -2,11 +2,7 @@ import asyncio
 import logging
 import os
 import time
-import warnings
 import numpy as np
-
-# Suppress TracerWarnings from the logs
-warnings.filterwarnings("ignore", category=UserWarning)
 
 from optimum.intel.openvino import OVModelForSpeechSeq2Seq
 from transformers import AutoProcessor, pipeline
@@ -38,7 +34,6 @@ class OpenVINOWhisperHandler(AsyncEventHandler):
             start_time = time.perf_counter()
             audio_array = np.frombuffer(self.audio_buffer, dtype=np.int16).astype(np.float32) / 32768.0
             
-            # Transcription with Intel GPU acceleration
             result = self.pipe(audio_array)
             text = result["text"].strip()
             
@@ -52,18 +47,21 @@ class OpenVINOWhisperHandler(AsyncEventHandler):
 async def main():
     _LOGGER.info(f"Loading {MODEL_ID} to {DEVICE}...")
     
-    # Using ov_config to prioritize latency for Voice Assist
-    ov_config = {"PERFORMANCE_HINT": "LATENCY"}
+    # Load with GPU/CPU fallback
+    try:
+        model = OVModelForSpeechSeq2Seq.from_pretrained(
+            MODEL_ID, device=DEVICE, export=True, compile=True,
+            ov_config={"PERFORMANCE_HINT": "LATENCY"}
+        )
+        current_dev = DEVICE
+    except Exception as e:
+        _LOGGER.error(f"GPU Load failed, falling back to CPU: {e}")
+        model = OVModelForSpeechSeq2Seq.from_pretrained(
+            MODEL_ID, device="CPU", export=True, compile=True
+        )
+        current_dev = "CPU"
     
-    model = OVModelForSpeechSeq2Seq.from_pretrained(
-        MODEL_ID, 
-        device=DEVICE, 
-        export=True, 
-        compile=True,
-        ov_config=ov_config
-    )
     processor = AutoProcessor.from_pretrained(MODEL_ID)
-    
     pipe = pipeline(
         "automatic-speech-recognition", 
         model=model, 
@@ -72,22 +70,22 @@ async def main():
     )
     
     attr = Attribution(name="OpenAI", url="https://github.com/openai/whisper")
+    
+    # Verified: Order of arguments is (name, description, attribution, version, models/languages)
     wyoming_info = Info(
         asr=[
             AsrProgram(
-                name="OpenVINO Whisper",
-                description="Intel OpenVINO accelerated Whisper STT",
-                attribution=attr,
-                installed=True,
-                version="3.3.0",
-                models=[
+                "OpenVINO Whisper",
+                "Intel OpenVINO accelerated Whisper STT",
+                attr,
+                "4.0.0",
+                [
                     AsrModel(
-                        name=MODEL_ID,
-                        description="Large Turbo Whisper",
-                        attribution=attr,
-                        installed=True,
-                        languages=["en"],
-                        version="1.0"
+                        MODEL_ID,
+                        "Large Turbo Whisper",
+                        attr,
+                        "1.0",
+                        ["en"]
                     )
                 ]
             )
@@ -95,7 +93,7 @@ async def main():
     )
     
     server = AsyncServer.from_uri("tcp://0.0.0.0:10300")
-    _LOGGER.info(f"Ready! Listening on 10300 (Running on {DEVICE})")
+    _LOGGER.info(f"Ready! Running on {current_dev}")
     await server.run(lambda: OpenVINOWhisperHandler(wyoming_info, pipe))
 
 if __name__ == "__main__":
