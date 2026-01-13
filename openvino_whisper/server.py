@@ -70,13 +70,14 @@ async def main():
     
     attr = Attribution(name="OpenAI", url="https://github.com/openai/whisper")
     
+    # Position 1: Name, 2: Description, 3: Attribution Object, 4: Version String, 5: List
     wyoming_info = Info(
         asr=[
             AsrProgram(
                 "OpenVINO Whisper",
                 "Intel OpenVINO accelerated Whisper STT",
                 attr,
-                "4.1.0",
+                "4.3.0",
                 [
                     AsrModel(
                         MODEL_ID,
