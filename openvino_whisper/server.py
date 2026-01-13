@@ -4,13 +4,15 @@ import os
 import time
 import numpy as np
 
+# Optimum Intel & Transformers
 from optimum.intel.openvino import OVModelForSpeechSeq2Seq
 from transformers import AutoProcessor, pipeline
 
+# Wyoming Protocol
 from wyoming.asr import Transcribe, Transcript
 from wyoming.audio import AudioChunk, AudioStop
 from wyoming.event import Event
-from wyoming.info import AsrModel, AsrProgram, Describe, Info
+from wyoming.info import AsrModel, AsrProgram, Attribution, Describe, Info
 from wyoming.server import AsyncEventHandler, AsyncServer
 
 logging.basicConfig(level=logging.INFO)
@@ -51,20 +53,26 @@ async def main():
     processor = AutoProcessor.from_pretrained(MODEL_ID)
     pipe = pipeline("automatic-speech-recognition", model=model, feature_extractor=processor.feature_extractor, tokenizer=processor.tokenizer)
     
-    # VERIFIED: No 'slug' arguments. Only name, description, version, installed, models, languages.
+    # Define attribution
+    attr = Attribution(name="OpenAI", url="https://github.com/openai/whisper")
+    
+    # Metadata verified: Attribution and Version are REQUIRED
     wyoming_info = Info(
         asr=[
             AsrProgram(
                 name="OpenVINO Whisper",
                 description="Intel OpenVINO accelerated Whisper STT",
-                version="3.1.0",
+                attribution=attr,
                 installed=True,
+                version="3.2.0",
                 models=[
                     AsrModel(
                         name=MODEL_ID,
                         description="Large Turbo Whisper",
+                        attribution=attr,
                         installed=True,
-                        languages=["en"]
+                        languages=["en"],
+                        version="1.0"
                     )
                 ]
             )
