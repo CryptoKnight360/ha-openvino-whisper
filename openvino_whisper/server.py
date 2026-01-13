@@ -47,9 +47,7 @@ class OpenVINOWhisperHandler(AsyncEventHandler):
 async def main():
     _LOGGER.info(f"Loading {MODEL_ID} to {DEVICE}...")
     
-    # Environment tuning for 13th Gen GPU
-    os.environ["OV_GPU_WAIT_FOR_DYNAMICS"] = "1"
-    
+    # Enable fallback logic to ensure it starts even if GPU fails
     try:
         model = OVModelForSpeechSeq2Seq.from_pretrained(
             MODEL_ID, device=DEVICE, export=True, compile=True,
@@ -73,21 +71,22 @@ async def main():
     
     attr = Attribution(name="OpenAI", url="https://github.com/openai/whisper")
     
-    # USING KEYWORD ARGUMENTS TO PREVENT TYPEERROR
+    # Fixed Info structure using keyword arguments
     wyoming_info = Info(
         asr=[
             AsrProgram(
                 name="OpenVINO Whisper",
                 description="Intel OpenVINO accelerated Whisper STT",
                 attribution=attr,
-                version="8.0.1",
+                version="8.1.0",
                 models=[
                     AsrModel(
                         name=MODEL_ID,
                         description="Large Turbo Whisper",
                         attribution=attr,
                         version="1.0",
-                        languages=["en"]
+                        languages=["en"],
+                        installed=True
                     )
                 ]
             )
@@ -95,7 +94,7 @@ async def main():
     )
     
     server = AsyncServer.from_uri("tcp://0.0.0.0:10300")
-    _LOGGER.info(f"Ready! Running on {current_dev}")
+    _LOGGER.info(f"Ready! Listening on 10300 (Running on {current_dev})")
     await server.run(lambda: OpenVINOWhisperHandler(wyoming_info, pipe))
 
 if __name__ == "__main__":
