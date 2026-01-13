@@ -47,20 +47,23 @@ class OpenVINOWhisperHandler(AsyncEventHandler):
 async def main():
     _LOGGER.info(f"Loading {MODEL_ID} to {DEVICE}...")
     
+    # Environment tuning for 13th Gen GPU
+    os.environ["OV_GPU_WAIT_FOR_DYNAMICS"] = "1"
+    
     try:
         model = OVModelForSpeechSeq2Seq.from_pretrained(
             MODEL_ID, device=DEVICE, export=True, compile=True,
-            ov_config={"PERFORMANCE_HINT": "LATENCY"}
+            ov_config={"PERFORMANCE_HINT": "LATENCY", "CACHE_DIR": ""}
         )
         current_dev = DEVICE
     except Exception as e:
-        _LOGGER.warning(f"GPU failed, using CPU: {e}")
+        _LOGGER.error(f"GPU Load failed, falling back to CPU: {e}")
         model = OVModelForSpeechSeq2Seq.from_pretrained(
             MODEL_ID, device="CPU", export=True, compile=True
         )
         current_dev = "CPU"
     
-    processor = AutoProcessor.from_pretrained(MODEL_ID)
+    processor = AutoProcessor.from_pretrained(MODEL_ID, use_fast=True)
     pipe = pipeline(
         "automatic-speech-recognition", 
         model=model, 
@@ -68,22 +71,23 @@ async def main():
         tokenizer=processor.tokenizer
     )
     
-    # 5 Positional Arguments: (name, description, attribution, version, models/languages)
-    attr = Attribution("OpenAI", "https://github.com/openai/whisper")
+    attr = Attribution(name="OpenAI", url="https://github.com/openai/whisper")
+    
+    # USING KEYWORD ARGUMENTS TO PREVENT TYPEERROR
     wyoming_info = Info(
         asr=[
             AsrProgram(
-                "OpenVINO Whisper",
-                "Intel OpenVINO accelerated Whisper STT",
-                attr,
-                "7.0.0",
-                [
+                name="OpenVINO Whisper",
+                description="Intel OpenVINO accelerated Whisper STT",
+                attribution=attr,
+                version="8.0.1",
+                models=[
                     AsrModel(
-                        MODEL_ID,
-                        "Large Turbo Whisper",
-                        attr,
-                        "1.0",
-                        ["en"]
+                        name=MODEL_ID,
+                        description="Large Turbo Whisper",
+                        attribution=attr,
+                        version="1.0",
+                        languages=["en"]
                     )
                 ]
             )
