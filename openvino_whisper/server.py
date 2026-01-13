@@ -47,6 +47,7 @@ class OpenVINOWhisperHandler(AsyncEventHandler):
 async def main():
     _LOGGER.info(f"Loading {MODEL_ID} to {DEVICE}...")
     
+    # Load model with GPU support
     try:
         model = OVModelForSpeechSeq2Seq.from_pretrained(
             MODEL_ID, device=DEVICE, export=True, compile=True,
@@ -68,16 +69,16 @@ async def main():
         tokenizer=processor.tokenizer
     )
     
-    attr = Attribution(name="OpenAI", url="https://github.com/openai/whisper")
+    attr = Attribution("OpenAI", "https://github.com/openai/whisper")
     
-    # Position 1: Name, 2: Description, 3: Attribution Object, 4: Version String, 5: List
+    # (name, description, attribution, version, list)
     wyoming_info = Info(
         asr=[
             AsrProgram(
                 "OpenVINO Whisper",
                 "Intel OpenVINO accelerated Whisper STT",
                 attr,
-                "4.3.0",
+                "5.0.0",
                 [
                     AsrModel(
                         MODEL_ID,
