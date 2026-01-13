@@ -1,1 +1,5 @@
-
+#!/usr/bin/with-contenv bashio
+export MODEL_ID=$(bashio::config 'model')
+export DEVICE=$(bashio::config 'device')
+export LANGUAGE=$(bashio::config 'language')
+exec python3 /app/server.py
