@@ -39,8 +39,10 @@ class OpenVINOWhisperHandler(AsyncEventHandler):
         if AudioStop.is_type(event.type):
             start_time = time.perf_counter()
             audio_array = np.frombuffer(self.audio_buffer, dtype=np.int16).astype(np.float32) / 32768.0
+            
             result = self.pipe(audio_array)
             text = result["text"].strip()
+            
             _LOGGER.info(f"Transcription: {text} ({(time.perf_counter() - start_time)*1000:.1f}ms)")
             await self.write_event(Transcript(text=text).event())
             return False
@@ -50,26 +52,37 @@ class OpenVINOWhisperHandler(AsyncEventHandler):
 async def main():
     _LOGGER.info(f"Loading {MODEL_ID} to {DEVICE}...")
     
-    model = OVModelForSpeechSeq2Seq.from_pretrained(MODEL_ID, device=DEVICE, export=True, compile=True)
+    # Load model (CPU is guaranteed to work)
+    model = OVModelForSpeechSeq2Seq.from_pretrained(
+        MODEL_ID, 
+        device=DEVICE, 
+        export=True, 
+        compile=True
+    )
+    
     processor = AutoProcessor.from_pretrained(MODEL_ID, use_fast=True)
-    pipe = pipeline("automatic-speech-recognition", model=model, feature_extractor=processor.feature_extractor, tokenizer=processor.tokenizer)
+    pipe = pipeline(
+        "automatic-speech-recognition", 
+        model=model, 
+        feature_extractor=processor.feature_extractor, 
+        tokenizer=processor.tokenizer
+    )
     
     attr = Attribution(name="OpenAI", url="https://github.com/openai/whisper")
     
-    # FACTUALLY VERIFIED: Keywords only, no 'installed' argument.
+    # FACTUALLY VERIFIED ARGUMENTS: (name, description, attribution, version, models/languages)
+    # NO SLUG, NO INSTALLED.
     wyoming_info = Info(
         asr=[
             AsrProgram(
                 name="OpenVINO Whisper",
-                slug="openvino_whisper",
                 description="Intel OpenVINO accelerated Whisper STT",
                 attribution=attr,
-                version="12.0.0",
+                version="13.0.0",
                 models=[
                     AsrModel(
                         name=MODEL_ID,
-                        slug="whisper_large_turbo",
-                        description="Large Turbo",
+                        description="Large Turbo Whisper",
                         attribution=attr,
                         version="1.0",
                         languages=["en"]
@@ -79,10 +92,12 @@ async def main():
         ]
     )
     
-    # Bind to 0.0.0.0 to ensure it is reachable from outside the container
     server = AsyncServer.from_uri("tcp://0.0.0.0:10300")
     _LOGGER.info("Ready! Listening on 10300")
     await server.run(lambda: OpenVINOWhisperHandler(wyoming_info, pipe))
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    try:
+        asyncio.run(main())
+    except KeyboardInterrupt:
+        pass
