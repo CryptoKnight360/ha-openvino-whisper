@@ -1,7 +1,7 @@
 name: "OpenVINO Whisper STT"
 slug: "openvino_whisper"
 description: "Intel OpenVINO accelerated Whisper STT"
-version: "4.3.0"
+version: "5.0.0"
 arch:
   - amd64
 startup: services
