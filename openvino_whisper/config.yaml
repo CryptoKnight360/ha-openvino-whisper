@@ -1,13 +1,19 @@
 name: "OpenVINO Whisper STT"
 slug: "openvino_whisper"
 description: "Intel OpenVINO accelerated Whisper STT"
-version: "7.0.0"
+version: "8.0.1"
 arch:
   - amd64
 startup: services
 boot: auto
 host_network: true
-full_access: true
+privileged:
+  - SYS_ADMIN
+group_add:
+  - 44   # video
+  - 100  # users
+  - 107  # render (Standard for Iris Xe)
+  - 109  # render (Alternative ID)
 devices:
   - /dev/dri:/dev/dri
 ports:
