@@ -1,15 +1,21 @@
-FROM python:3.11-slim-bookworm
+FROM ubuntu:22.04
 
+ARG DEBIAN_FRONTEND=noninteractive
 USER root
 
-# Install tools to add Intel's official repository
+# Install Intel GPU Drivers for 13th Gen (Iris Xe)
 RUN apt-get update && apt-get install -y --no-install-recommends \
     wget gpg ca-certificates \
-    && wget -qO - https://repositories.intel.com/graphics/intel-graphics.key | gpg --dearmor --output /usr/share/keyrings/intel-graphics.gpg \
-    && echo "deb [arch=amd64 signed-by=/usr/share/keyrings/intel-graphics.gpg] https://repositories.intel.com/graphics/ubuntu jammy main" > /etc/apt/sources.list.d/intel.list \
+    && wget -qO - https://repositories.intel.com/gpu/intel-graphics.key | gpg --dearmor --output /usr/share/keyrings/intel-graphics.gpg \
+    && echo "deb [arch=amd64 signed-by=/usr/share/keyrings/intel-graphics.gpg] https://repositories.intel.com/gpu/ubuntu jammy unified" > /etc/apt/sources.list.d/intel-gpu-jammy.list \
     && apt-get update && apt-get install -y --no-install-recommends \
-    ffmpeg build-essential python3-dev \
-    intel-opencl-icd intel-level-zero-gpu level-zero \
+    ffmpeg \
+    python3-pip \
+    python3-dev \
+    build-essential \
+    intel-opencl-icd \
+    intel-level-zero-gpu \
+    level-zero \
     && rm -rf /var/lib/apt/lists/*
 
 # Install Python stack
