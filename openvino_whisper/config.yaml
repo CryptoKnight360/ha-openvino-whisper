@@ -1,22 +1,22 @@
 name: "OpenVINO Whisper STT"
 slug: "openvino_whisper"
 description: "Intel OpenVINO accelerated Whisper STT"
-version: "8.3.3"
+version: "1.0.0"
 arch:
   - amd64
+init: false
 startup: services
 boot: auto
-host_network: true
-full_access: true
-devices:
-  - /dev/dri:/dev/dri
-ports:
-  10300/tcp: 10300
 discovery:
   - wyoming
+devices:
+  - /dev/dri:/dev/dri
 options:
   model: "openai/whisper-large-v3-turbo"
   device: "CPU"
+  language: "en"
 schema:
   model: str
   device: str
+  language: str
+homeassistant: "2023.9.0"
