@@ -1,1 +1,7 @@
+#!/usr/bin/with-contenv bashio
+export MODEL_ID=$(bashio::config 'model')
+export DEVICE=$(bashio::config 'device')
+export LANGUAGE=$(bashio::config 'language')
 
+bashio::log.info "Starting OpenVINO Whisper Wyoming Server..."
+exec python3 /app/server.py
