@@ -3,21 +3,18 @@ import logging
 import os
 import time
 import numpy as np
-from typing import Optional
-
 from optimum.intel.openvino import OVSpeechSeq2SeqPipeline
 from wyoming.audio import AudioChunk, AudioStop
 from wyoming.event import Event
-from wyoming.info import Describe, Info, Model, ModelType, SttModel, SttProgram
+from wyoming.info import Describe, Info, SttModel, SttProgram
 from wyoming.server import AsyncEventHandler, AsyncServer
 from wyoming.stt import Transcribe, Transcription
 
-# Configure Logging
 logging.basicConfig(level=logging.INFO)
 _LOGGER = logging.getLogger(__name__)
 
-# Environment variables
-MODEL_ID = os.getenv("MODEL_ID", "OpenVINO/whisper-small-int8-ov")
+# These are pulled from your Home Assistant Configuration tab
+MODEL_ID = os.getenv("MODEL_ID", "openai/whisper-large-v3-turbo")
 DEVICE = os.getenv("DEVICE", "AUTO")
 
 class OpenVINOWhisperHandler(AsyncEventHandler):
@@ -28,82 +25,41 @@ class OpenVINOWhisperHandler(AsyncEventHandler):
         self.audio_buffer = bytearray()
 
     async def handle_event(self, event: Event) -> bool:
-        if Transcribe.is_type(event.type):
-            # Client wants to start transcribing
-            pass
-        
-        elif AudioChunk.is_type(event.type):
-            # Receive audio data
+        if AudioChunk.is_type(event.type):
             chunk = AudioChunk.from_event(event)
             self.audio_buffer.extend(chunk.audio)
-
         elif AudioStop.is_type(event.type):
-            # End of audio stream - perform inference
-            _LOGGER.info("Audio received, transcribing...")
+            _LOGGER.info("Transcribing with Large Turbo...")
             start_time = time.perf_counter()
-            
-            # Convert buffer to float32 numpy array (normalized)
             audio_array = np.frombuffer(self.audio_buffer, dtype=np.int16).astype(np.float32) / 32768.0
             
-            # Run OpenVINO Inference
-            # Whisper expects 16000Hz. Wyoming protocol usually sends 16000Hz.
+            # Inference
             result = self.pipe(audio_array, sampling_rate=16000)
             text = result["text"].strip()
             
-            inference_ms = (time.perf_counter() - start_time) * 1000
-            _LOGGER.info(f"Transcription: {text} (Latency: {inference_ms:.1f}ms)")
-
-            # Send result back to Wyoming client
+            _LOGGER.info(f"Transcription: {text} ({(time.perf_counter() - start_time)*1000:.1f}ms)")
             await self.write_event(Transcription(text=text).event())
-            
-            # Return False to close the connection after one transcription
             return False
-
         elif Describe.is_type(event.type):
             await self.write_event(self.wyoming_info.event())
-
         return True
 
 async def main():
-    _LOGGER.info(f"Loading model {MODEL_ID} to {DEVICE}...")
+    _LOGGER.info(f"Loading {MODEL_ID} to {DEVICE} (Exporting if needed)...")
     
-    # Load model once at startup
+    # export=True allows it to download and convert the Large Turbo model automatically
     pipe = OVSpeechSeq2SeqPipeline.from_pretrained(
         MODEL_ID,
         device=DEVICE,
-        compile=True
+        export=True, 
+        compile=True,
+        load_in_8bit=False # Use False for better accuracy on Large Turbo
     )
 
-    # Define Wyoming Info for Home Assistant discovery
-    wyoming_info = Info(
-        stt=[
-            SttProgram(
-                name="OpenVINO Whisper",
-                slug="openvino_whisper",
-                description="Intel OpenVINO accelerated Whisper STT",
-                version="2.0.0",
-                models=[
-                    SttModel(
-                        name=MODEL_ID,
-                        slug=MODEL_ID,
-                        description="Quantized Whisper",
-                        attribution={"name": "Intel", "url": "https://github.com/openvinotoolkit/openvino"},
-                        installed=True,
-                        languages=["en"], # Add more as needed
-                        version="1.0"
-                    )
-                ]
-            )
-        ]
-    )
-
+    wyoming_info = Info(stt=[SttProgram(name="OpenVINO Whisper", slug="openvino_whisper", description="OpenVINO Whisper", version="2.1.0", models=[SttModel(name=MODEL_ID, slug=MODEL_ID, description="Whisper Model", installed=True, languages=["en"])])])
     server = AsyncServer.from_uri("tcp://0.0.0.0:10300")
-    _LOGGER.info("Ready! Listening on port 10300")
-    
+    _LOGGER.info("Ready!")
     await server.run(lambda: OpenVINOWhisperHandler(wyoming_info, pipe))
 
 if __name__ == "__main__":
-    try:
-        asyncio.run(main())
-    except KeyboardInterrupt:
-        pass
+    asyncio.run(main())
