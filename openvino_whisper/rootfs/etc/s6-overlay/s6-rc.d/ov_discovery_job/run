@@ -1,1 +1,3 @@
-
+#!/usr/bin/with-contenv bashio
+host=$(bashio::addon.hostname)
+bashio::discovery "wyoming" "$(bashio::var.json host "${host}" port "^10300")"
