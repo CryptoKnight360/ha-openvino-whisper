@@ -7,7 +7,7 @@ from optimum.intel.openvino import OVModelForSpeechSeq2Seq
 from transformers import AutoProcessor, pipeline
 from wyoming.audio import AudioChunk, AudioStop
 from wyoming.event import Event
-from wyoming.info import Describe, Info, SttModel, SttProgram
+from wyoming.info import Describe, Info, Model, Program
 from wyoming.server import AsyncEventHandler, AsyncServer
 from wyoming.stt import Transcribe, Transcription
 
@@ -32,14 +32,13 @@ class OpenVINOWhisperHandler(AsyncEventHandler):
             self.audio_buffer.extend(chunk.audio)
 
         elif AudioStop.is_type(event.type):
-            _LOGGER.info("Transcribing audio...")
+            _LOGGER.info("Transcribing audio with Large-v3-Turbo...")
             start_time = time.perf_counter()
             
             # Convert buffer to float32 numpy array
             audio_array = np.frombuffer(self.audio_buffer, dtype=np.int16).astype(np.float32) / 32768.0
             
-            # Run Inference using the pipeline
-            # Large Turbo is very fast on Intel hardware
+            # Run Inference
             result = self.pipe(audio_array)
             text = result["text"].strip()
             
@@ -56,10 +55,9 @@ class OpenVINOWhisperHandler(AsyncEventHandler):
         return True
 
 async def main():
-    _LOGGER.info(f"Loading {MODEL_ID} to {DEVICE}...")
+    _LOGGER.info(f"Loading {MODEL_ID} to {DEVICE} (This takes a few minutes on first run)...")
     
-    # Load the model using the correct OpenVINO class
-    # export=True will convert the Large Turbo model on first run
+    # Load the model - using the verified OVModelForSpeechSeq2Seq class
     model = OVModelForSpeechSeq2Seq.from_pretrained(
         MODEL_ID,
         device=DEVICE,
@@ -67,10 +65,8 @@ async def main():
         compile=True
     )
     
-    # Load the processor for feature extraction and decoding
     processor = AutoProcessor.from_pretrained(MODEL_ID)
     
-    # Create a high-level pipeline for speech recognition
     pipe = pipeline(
         "automatic-speech-recognition",
         model=model,
@@ -79,21 +75,21 @@ async def main():
         chunk_length_s=30
     )
 
+    # Corrected naming: Model and Program (not SttModel/SttProgram)
     wyoming_info = Info(
         stt=[
-            SttProgram(
+            Program(
                 name="OpenVINO Whisper",
                 slug="openvino_whisper",
                 description="Intel OpenVINO accelerated Whisper STT",
-                version="2.1.2",
+                version="2.1.3",
                 models=[
-                    SttModel(
+                    Model(
                         name=MODEL_ID,
                         slug=MODEL_ID,
                         description="Large Turbo Whisper",
                         installed=True,
-                        languages=["en"],
-                        version="1.0"
+                        languages=["en"]
                     )
                 ]
             )
