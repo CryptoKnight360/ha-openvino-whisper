@@ -47,7 +47,6 @@ class OpenVINOWhisperHandler(AsyncEventHandler):
 async def main():
     _LOGGER.info(f"Loading {MODEL_ID} to {DEVICE}...")
     
-    # Enable fallback logic to ensure it starts even if GPU fails
     try:
         model = OVModelForSpeechSeq2Seq.from_pretrained(
             MODEL_ID, device=DEVICE, export=True, compile=True,
@@ -71,14 +70,15 @@ async def main():
     
     attr = Attribution(name="OpenAI", url="https://github.com/openai/whisper")
     
-    # Fixed Info structure using keyword arguments
+    # FIXED: Added installed=True to both AsrProgram and AsrModel
     wyoming_info = Info(
         asr=[
             AsrProgram(
                 name="OpenVINO Whisper",
                 description="Intel OpenVINO accelerated Whisper STT",
                 attribution=attr,
-                version="8.1.0",
+                version="8.2.0",
+                installed=True,
                 models=[
                     AsrModel(
                         name=MODEL_ID,
