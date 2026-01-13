@@ -1,7 +1,7 @@
 name: "OpenVINO Whisper STT"
 slug: "openvino_whisper"
 description: "Intel OpenVINO accelerated Whisper STT"
-version: "4.1.0"
+version: "4.2.0"
 arch:
   - amd64
 startup: services
@@ -9,6 +9,9 @@ boot: auto
 host_network: true
 privileged:
   - SYS_ADMIN
+group_add:
+  - 44
+  - 107
 devices:
   - /dev/dri:/dev/dri
 ports:
