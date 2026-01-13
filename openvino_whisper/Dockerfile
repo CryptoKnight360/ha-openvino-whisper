@@ -2,7 +2,7 @@ FROM python:3.11-slim-bookworm
 
 USER root
 
-# Enable non-free for Intel drivers and install dependencies
+# Enable non-free and install drivers
 RUN sed -i 's/components = main/components = main contrib non-free non-free-firmware/g' /etc/apt/sources.list.d/debian.sources && \
     apt-get update && apt-get install -y --no-install-recommends \
     ffmpeg \
