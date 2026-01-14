@@ -1,8 +1,8 @@
 FROM python:3.11-slim-bookworm
 
 # 1. Configure APT Repositories
-# We remove the default source file and create a new one listing 'non-free' and 'non-free-firmware'.
-# This allows apt to find the proprietary Intel drivers.
+# This worked in your last build, so we keep it exactly the same.
+# It enables non-free access for the Intel drivers.
 RUN rm -f /etc/apt/sources.list.d/debian.sources && \
     echo "deb http://deb.debian.org/debian bookworm main contrib non-free non-free-firmware" > /etc/apt/sources.list && \
     echo "deb http://deb.debian.org/debian bookworm-updates main contrib non-free non-free-firmware" >> /etc/apt/sources.list && \
@@ -10,8 +10,7 @@ RUN rm -f /etc/apt/sources.list.d/debian.sources && \
     echo "deb http://deb.debian.org/debian bookworm-backports main contrib non-free non-free-firmware" > /etc/apt/sources.list.d/backports.list
 
 # 2. Install System Dependencies & Drivers
-# CRITICAL FIX: We install 'intel-opencl-icd' from backports (it supports 13th Gen).
-# We DO NOT install 'intel-level-zero-gpu' because it is missing from backports and caused Exit 100.
+# This passed successfully in your logs.
 RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
     libgl1-mesa-glx \
@@ -27,11 +26,11 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 WORKDIR /app
 
 # 3. Install Python Dependencies
-# Pinned versions prevent the "Unsupported attribute type" XML error.
+# FIX: Removed explicit 'openvino' pin. 
+# We let optimum-intel pull the specific dev version it requires.
 RUN pip install --no-cache-dir --upgrade pip && \
     pip install --no-cache-dir \
     "transformers==4.45.2" \
-    "openvino==2024.4.0" \
     "optimum-intel[openvino,nncf]==1.20.1" \
     "wyoming>=1.5.0" \
     "zeroconf>=0.131.0" \
