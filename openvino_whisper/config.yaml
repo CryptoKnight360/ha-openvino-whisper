@@ -1,6 +1,6 @@
-name: "OpenVINO Whisper Large-Turbo"
-description: "OpenVINO accelerated Whisper for LattePanda using Wyoming Protocol"
-version: "2.0.7"
+name: "OpenVINO Whisper"
+description: "Optimized Whisper Large-v3-Turbo for LattePanda"
+version: "3.0.0"
 slug: "openvino_whisper"
 arch:
   - amd64
@@ -9,8 +9,8 @@ boot: auto
 ports:
   10300/tcp: 10300
 options:
-  model: "large-v3-turbo"
-  language: "en"
+  model: "openai/whisper-large-v3-turbo"
+  device: "CPU"
 schema:
   model: "str"
-  language: "str"
+  device: "str"
