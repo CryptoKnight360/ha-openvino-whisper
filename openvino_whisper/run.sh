@@ -1,12 +1,10 @@
-#!/usr/bin/env bashio
+#!/usr/bin/with-contenv bashio
 
-# Use bashio to get config
-MODEL=$(bashio::config 'model' 'openai/whisper-large-v3-turbo')
-DEVICE="CPU"
+MODEL=$(bashio::config 'model')
+DEVICE=$(bashio::config 'device')
 
-bashio::log.info "Starting Wyoming OpenVINO Server for LattePanda..."
+bashio::log.info "Starting OpenVINO Whisper on $DEVICE..."
 
-# Run the python script
 python3 /app/wyoming_server.py \
     --model "$MODEL" \
     --device "$DEVICE"
