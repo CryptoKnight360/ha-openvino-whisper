@@ -1,9 +1,9 @@
 FROM python:3.11-slim-bookworm
 
 # Install system dependencies
-# intel-opencl-icd: This IS the driver for Integrated Iris Xe Graphics.
-# clinfo: Utility to verify the iGPU is visible.
-# jq: For config parsing.
+# intel-opencl-icd: Drivers for Iris Xe iGPU
+# clinfo: Verification tool
+# jq: Config parsing
 RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
     libgl1-mesa-glx \
@@ -13,6 +13,11 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     intel-opencl-icd \
     clinfo \
     && rm -rf /var/lib/apt/lists/*
+
+# Grant OpenCL permissions to root user by adding to video/render groups
+RUN getent group video || groupadd video && \
+    getent group render || groupadd render && \
+    usermod -aG video,render root
 
 # Set working directory
 WORKDIR /app
