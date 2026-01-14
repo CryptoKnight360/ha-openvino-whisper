@@ -1,9 +1,9 @@
 FROM python:3.11-slim-bookworm
 
 # Install system dependencies
-# wget/ca-certificates: To download drivers
-# clinfo: To verify hardware
-# jq: To parse config
+# wget, ca-certificates: Required for downloading drivers securely
+# clinfo: Hardware verification
+# jq: Config parsing
 RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
     libgl1-mesa-glx \
@@ -15,21 +15,20 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 
 # -----------------------------------------------------------------------------
-# INSTALL INTEL COMPUTE RUNTIME (NEO) - MATCHED SET
-# Release: 23.43.27642.40 (Stable, supports 13th Gen Raptor Lake)
+# INSTALL INTEL COMPUTE RUNTIME (NEO) - GEN 2 (RAPTOR LAKE SUPPORT)
 # -----------------------------------------------------------------------------
 WORKDIR /tmp/intel-drivers
 
-# 1. Download compatible Graphics Compiler (IGC)
-RUN wget -q https://github.com/intel/intel-graphics-compiler/releases/download/igc-1.0.15193.4/intel-igc-core_1.0.15193.4_amd64.deb && \
-    wget -q https://github.com/intel/intel-graphics-compiler/releases/download/igc-1.0.15193.4/intel-igc-opencl_1.0.15193.4_amd64.deb
+# 1. Download IGC Gen2 Compiler (Verified Active URLs)
+RUN wget -q https://github.com/intel/intel-graphics-compiler/releases/download/v2.5.6/intel-igc-core-2_2.5.6+18417_amd64.deb && \
+    wget -q https://github.com/intel/intel-graphics-compiler/releases/download/v2.5.6/intel-igc-opencl-2_2.5.6+18417_amd64.deb
 
-# 2. Download Compute Runtime and Memory Manager
-RUN wget -q https://github.com/intel/compute-runtime/releases/download/23.43.27642.40/intel-level-zero-gpu_1.3.27642.40_amd64.deb && \
-    wget -q https://github.com/intel/compute-runtime/releases/download/23.43.27642.40/intel-opencl-icd_23.43.27642.40_amd64.deb && \
-    wget -q https://github.com/intel/compute-runtime/releases/download/23.43.27642.40/libigdgmm12_22.3.0_amd64.deb
+# 2. Download Compute Runtime & GMM (Matches the Compiler above)
+RUN wget -q https://github.com/intel/compute-runtime/releases/download/24.52.32224.5/intel-level-zero-gpu_1.6.32224.5_amd64.deb && \
+    wget -q https://github.com/intel/compute-runtime/releases/download/24.52.32224.5/intel-opencl-icd_24.52.32224.5_amd64.deb && \
+    wget -q https://github.com/intel/compute-runtime/releases/download/24.52.32224.5/libigdgmm12_22.5.5_amd64.deb
 
-# 3. Install all packages together to resolve dependencies
+# 3. Install all packages
 RUN dpkg -i *.deb && rm *.deb
 
 # -----------------------------------------------------------------------------
