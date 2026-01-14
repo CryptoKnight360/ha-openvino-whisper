@@ -1,19 +1,11 @@
-#!/usr/bin/with-contenv bashio
+#!/usr/bin/env bashio
 
-# Fetch config values from Home Assistant
-MODEL=$(bashio::config 'model' 'large-v3-turbo')
-LANGUAGE=$(bashio::config 'language' 'en')
+MODEL=$(bashio::config 'model' 'openai/whisper-large-v3-turbo')
+DEVICE="CPU"
 
-bashio::log.info "Starting Wyoming OpenVINO Server..."
-bashio::log.info "Model: $MODEL"
-bashio::log.info "Hardware Device: OpenVINO"
+bashio::log.info "Starting Wyoming OpenVINO Server for LattePanda..."
 
-# Run the Wyoming server
-# Port 10300 is required for Home Assistant discovery
-python3 -m wyoming_faster_whisper \
-    --uri 'tcp://0.0.0.0:10300' \
+# Run the python script from the /app directory
+python3 /app/wyoming_server.py \
     --model "$MODEL" \
-    --language "$LANGUAGE" \
-    --device openvino \
-    --data-dir /data \
-    --download-dir /data
+    --device "$DEVICE"
