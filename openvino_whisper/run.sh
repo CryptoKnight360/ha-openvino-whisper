@@ -20,7 +20,7 @@ echo "Model: $MODEL"
 echo "Device: $DEVICE"
 
 # ---------------------------------------------------------------------
-# CLEANUP (CRITICAL)
+# CLEANUP
 # Wiping cache to remove any files corrupted by previous library versions
 # ---------------------------------------------------------------------
 if [ -d "/data/model_cache" ]; then
@@ -31,11 +31,10 @@ mkdir -p /data/model_cache
 
 # ---------------------------------------------------------------------
 # PERMISSION FIXER
-# Dynamically maps the container user to the host hardware group
 # ---------------------------------------------------------------------
 RENDER_NODE="/dev/dri/renderD128"
 if [ -e "$RENDER_NODE" ]; then
-    echo "Configuring permissions for $RENDER_NODE"
+    echo "Found render node at $RENDER_NODE"
     RENDER_GID=$(stat -c '%g' "$RENDER_NODE")
     
     if ! getent group "$RENDER_GID" > /dev/null; then
@@ -49,7 +48,6 @@ fi
 # ---------------------------------------------------------------------
 echo "Checking Intel Graphics Status (clinfo)..."
 if command -v clinfo &> /dev/null; then
-    # We expect to see "Intel(R) Iris(R) Xe Graphics"
     clinfo | grep -E "Platform Name|Device Name" || echo "ERROR: clinfo found 0 devices."
 else
     echo "clinfo not installed."
