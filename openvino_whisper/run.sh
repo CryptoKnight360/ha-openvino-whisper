@@ -3,7 +3,6 @@ set -e
 
 CONFIG_PATH="/data/options.json"
 
-# Parse configuration
 if [ -f "$CONFIG_PATH" ]; then
     MODEL=$(jq --raw-output '.model // "openai/whisper-large-v3-turbo"' "$CONFIG_PATH")
     DEVICE=$(jq --raw-output '.device // "GPU"' "$CONFIG_PATH")
@@ -47,8 +46,6 @@ else
     echo "WARNING: GPU Render node not found!"
 fi
 
-# ---------------------------------------------------------------------
-# HARDWARE CHECK
 # ---------------------------------------------------------------------
 echo "Checking Intel Graphics Status (clinfo)..."
 if command -v clinfo &> /dev/null; then
