@@ -1,6 +1,6 @@
 name: "OpenVINO Whisper"
 description: "Optimized Whisper Large-v3-Turbo for LattePanda"
-version: "1.0"
+version: "2.0"
 slug: "openvino_whisper"
 arch:
   - amd64
