@@ -1,8 +1,8 @@
 FROM python:3.11-slim-bookworm
 
-# 1. Configure APT Repositories
-# Remove default source files to avoid conflicts/duplicates
-# Add 'non-free' and 'non-free-firmware' to both standard and backports
+# 1. Configure APT Repositories (CRITICAL FIX)
+# We remove the default .sources file and write a standard sources.list.
+# We explicitly include 'non-free' and 'non-free-firmware' so apt can find the Intel drivers.
 RUN rm -f /etc/apt/sources.list.d/debian.sources && \
     echo "deb http://deb.debian.org/debian bookworm main contrib non-free non-free-firmware" > /etc/apt/sources.list && \
     echo "deb http://deb.debian.org/debian bookworm-updates main contrib non-free non-free-firmware" >> /etc/apt/sources.list && \
@@ -10,7 +10,8 @@ RUN rm -f /etc/apt/sources.list.d/debian.sources && \
     echo "deb http://deb.debian.org/debian bookworm-backports main contrib non-free non-free-firmware" > /etc/apt/sources.list.d/backports.list
 
 # 2. Install System Dependencies & Drivers
-# Now that 'non-free' is enabled, apt will successfully find intel-opencl-icd
+# We pull intel-opencl-icd and intel-level-zero-gpu from backports.
+# This provides the Compute Runtime required for 13th Gen (Raptor Lake).
 RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
     libgl1-mesa-glx \
@@ -27,7 +28,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 WORKDIR /app
 
 # 3. Install Python Dependencies
-# Pinned versions to prevent XML Serialization errors (XML bug in 2024.5+)
+# PINNED VERSIONS: Prevents "Unsupported attribute type: inputs" error.
 RUN pip install --no-cache-dir --upgrade pip && \
     pip install --no-cache-dir \
     "transformers==4.45.2" \
