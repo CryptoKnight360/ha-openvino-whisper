@@ -21,7 +21,6 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 
 # 2. Prepare the Python environment and install optimized Whisper libraries
-# We upgrade build tools first, then install the main stack
 RUN pip3 install --no-cache-dir --upgrade pip --break-system-packages && \
     pip3 install --no-cache-dir --upgrade setuptools wheel --break-system-packages && \
     pip3 install --no-cache-dir --break-system-packages \
@@ -40,4 +39,5 @@ COPY wyoming_server.py .
 COPY run.sh /
 RUN chmod a+x /run.sh
 
-ENTRYPOINT ["/run.sh"]
+# Use CMD instead of ENTRYPOINT to allow s6-overlay to initialize
+CMD ["/run.sh"]
