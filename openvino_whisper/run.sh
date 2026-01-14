@@ -1,36 +1,44 @@
 #!/bin/bash
-
-# Enable strict error handling
 set -e
 
-echo "Starting Wyoming OpenVINO Whisper..."
-
+# Config path
 CONFIG_PATH="/data/options.json"
 
-# Check if config exists, otherwise use defaults (useful for local testing outside HA)
+# Parse configuration
 if [ -f "$CONFIG_PATH" ]; then
-    MODEL=$(jq --raw-output '.model // "openai/whisper-large-v3-turbo"' $CONFIG_PATH)
-    DEVICE=$(jq --raw-output '.device // "GPU"' $CONFIG_PATH)
-    LANGUAGE=$(jq --raw-output '.language // "en"' $CONFIG_PATH)
-    BEAM_SIZE=$(jq --raw-output '.beam_size // 1' $CONFIG_PATH)
+    MODEL=$(jq --raw-output '.model // "openai/whisper-large-v3-turbo"' "$CONFIG_PATH")
+    DEVICE=$(jq --raw-output '.device // "GPU"' "$CONFIG_PATH")
+    LANGUAGE=$(jq --raw-output '.language // "en"' "$CONFIG_PATH")
+    BEAM_SIZE=$(jq --raw-output '.beam_size // 1' "$CONFIG_PATH")
 else
-    echo "Config file not found, using defaults."
     MODEL="openai/whisper-large-v3-turbo"
     DEVICE="GPU"
     LANGUAGE="en"
     BEAM_SIZE=1
 fi
 
-echo "--------------------------------"
-echo "Configuration:"
-echo "  Model: $MODEL"
-echo "  Device: $DEVICE"
-echo "  Language: $LANGUAGE"
-echo "  Beam Size: $BEAM_SIZE"
-echo "--------------------------------"
+echo "Starting OpenVINO Whisper..."
+echo "Model: $MODEL"
+echo "Device: $DEVICE"
 
-# Start the application
-# We use exec so the python process becomes PID 1 (receives signals correctly)
+# HARDWARE CHECK: Set permissions for Integrated Graphics
+if [ -d "/dev/dri" ]; then
+    echo "Setting permissions for /dev/dri..."
+    chmod -R 666 /dev/dri
+fi
+
+# DEBUG: Print available OpenCL devices (Iris Xe should appear here)
+echo "Checking for OpenCL Devices (Iris Xe):"
+if command -v clinfo &> /dev/null; then
+    clinfo | grep "Device Name" || echo "No OpenCL Devices Found via clinfo"
+else
+    echo "clinfo not found, skipping check."
+fi
+
+# Ensure cache directory exists
+mkdir -p /data/model_cache
+
+# Start Python App
 exec python3 /app/main.py \
     --model "$MODEL" \
     --device "$DEVICE" \
