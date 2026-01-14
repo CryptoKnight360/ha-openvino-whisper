@@ -1,22 +1,15 @@
-name: "OpenVINO Whisper STT"
+name: "OpenVINO Whisper Large-Turbo"
+description: "OpenVINO accelerated Whisper Large-v3-Turbo for LattePanda"
+version: "1.1.0"
 slug: "openvino_whisper"
-description: "Intel OpenVINO accelerated Whisper STT"
-version: "1.1.2"
 arch:
   - amd64
 init: false
-startup: services
-boot: auto
-discovery:
-  - wyoming
-devices:
-  - /dev/dri:/dev/dri
+ports:
+  10300/tcp: 10300
 options:
-  model: "openai/whisper-large-v3-turbo"
-  device: "CPU"
+  model: "bweng/whisper-large-v3-turbo-int8-ov" # Pre-optimized OpenVINO model
   language: "en"
 schema:
-  model: str
-  device: str
-  language: str
-homeassistant: "2023.9.0"
+  model: "str"
+  language: "str"
