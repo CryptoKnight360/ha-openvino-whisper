@@ -28,3 +28,5 @@
     "device": "list(GPU|CPU|AUTO)",
     "language": "str",
     "beam_size": "int"
+  }
+}
