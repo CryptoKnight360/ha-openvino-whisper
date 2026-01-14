@@ -18,16 +18,21 @@ fi
 echo "Starting OpenVINO Whisper..."
 echo "Model: $MODEL"
 echo "Device: $DEVICE"
+echo "Language: $LANGUAGE"
 
 # ---------------------------------------------------------------------
-# CLEANUP
-# Wiping cache to remove any files corrupted by previous library versions
+# CACHE MANAGEMENT
+# We map /data/model_cache to the Hugging Face cache.
+# We DO NOT wipe this every time, or startup will take 10 minutes.
 # ---------------------------------------------------------------------
-if [ -d "/data/model_cache" ]; then
-    echo "Wiping model cache to ensure clean conversion..."
-    rm -rf /data/model_cache
+export HF_HOME="/data/model_cache"
+mkdir -p "$HF_HOME"
+
+# Check if cache is suspiciously empty (permissions check)
+if [ ! -w "$HF_HOME" ]; then
+    echo "ERROR: /data/model_cache is not writable. Attempting fix..."
+    chmod 777 "$HF_HOME"
 fi
-mkdir -p /data/model_cache
 
 # ---------------------------------------------------------------------
 # PERMISSION FIXER
@@ -37,23 +42,31 @@ if [ -e "$RENDER_NODE" ]; then
     echo "Found render node at $RENDER_NODE"
     RENDER_GID=$(stat -c '%g' "$RENDER_NODE")
     
+    # Create group if it doesn't exist
     if ! getent group "$RENDER_GID" > /dev/null; then
-        groupadd -g "$RENDER_GID" render_custom
+        groupadd -g "$RENDER_GID" render_custom || true
     fi
-    usermod -aG "$RENDER_GID" root
+    
+    # Add root (current user) to that group
+    usermod -aG "$RENDER_GID" root || true
 else
-    echo "WARNING: GPU Render node not found!"
+    echo "WARNING: GPU Render node not found! Performance will be low."
 fi
 
 # ---------------------------------------------------------------------
+# DIAGNOSTICS
+# ---------------------------------------------------------------------
 echo "Checking Intel Graphics Status (clinfo)..."
 if command -v clinfo &> /dev/null; then
-    clinfo | grep -E "Platform Name|Device Name" || echo "ERROR: clinfo found 0 devices."
+    # Output only the device count to keep logs clean, unless 0
+    DEVICE_COUNT=$(clinfo | grep "Number of devices" | head -n 1 | awk '{print $4}')
+    echo "OpenCL Devices Found: ${DEVICE_COUNT:-0}"
 else
     echo "clinfo not installed."
 fi
 echo "---------------------------------------------------"
 
+# Launch the Python Application
 exec python3 /app/main.py \
     --model "$MODEL" \
     --device "$DEVICE" \
