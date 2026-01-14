@@ -20,38 +20,31 @@ echo "Model: $MODEL"
 echo "Device: $DEVICE"
 
 # ---------------------------------------------------------------------
-# CRITICAL FIX: CLEANUP
-# The previous failed installations left corrupted model files.
-# We must wipe them to ensure a clean model conversion.
+# CLEANUP
+# Wiping cache is MANDATORY because previous crashes left broken files.
 # ---------------------------------------------------------------------
 if [ -d "/data/model_cache" ]; then
-    echo "Cleaning up potentially corrupted model cache..."
+    echo "Wiping model cache to ensure clean conversion..."
     rm -rf /data/model_cache
 fi
 mkdir -p /data/model_cache
-# ---------------------------------------------------------------------
 
 # ---------------------------------------------------------------------
-# HARDWARE PERMISSION FIXER
+# PERMISSION FIXER
 # ---------------------------------------------------------------------
 RENDER_NODE="/dev/dri/renderD128"
-
 if [ -e "$RENDER_NODE" ]; then
-    echo "Found render node: $RENDER_NODE"
     RENDER_GID=$(stat -c '%g' "$RENDER_NODE")
-    
     if ! getent group "$RENDER_GID" > /dev/null; then
         groupadd -g "$RENDER_GID" render_custom
     fi
-    
     usermod -aG "$RENDER_GID" root
-else
-    echo "WARNING: $RENDER_NODE not found. GPU acceleration may fail."
 fi
 
 # ---------------------------------------------------------------------
 echo "Checking Intel Graphics Status (clinfo)..."
 if command -v clinfo &> /dev/null; then
+    # We expect to see "Intel(R) Iris(R) Xe Graphics"
     clinfo | grep -E "Platform Name|Device Name" || echo "ERROR: clinfo found 0 devices."
 else
     echo "clinfo not installed."
