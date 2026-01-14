@@ -1,31 +1,32 @@
 FROM python:3.11-slim-bookworm
 
 # Install system dependencies
-# libgl1-mesa-glx and libglib2.0-0 are required for OpenVINO/OpenCV
-# jq is installed to help with parsing config in shell scripts if needed
+# libgl1-mesa-glx / libglib2.0-0: for OpenCV/OpenVINO
+# jq: for config parsing
+# ocl-icd-libopencl1: Fixes "libOpenCL.so.1 not found"
+# intel-opencl-icd: Drivers for Intel Iris Xe GPU
 RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
     libgl1-mesa-glx \
     libglib2.0-0 \
     jq \
+    ocl-icd-libopencl1 \
+    intel-opencl-icd \
     && rm -rf /var/lib/apt/lists/*
 
 # Set working directory
 WORKDIR /app
 
 # Install Python dependencies
-# optimum-intel[openvino] installs the necessary Intel backends
-# wyoming is the protocol library
-# zeroconf is for auto-discovery
 RUN pip install --no-cache-dir --upgrade pip && \
     pip install --no-cache-dir \
-    "optimum-intel[openvino,nncf]" \
+    "optimum-intel[openvino,nncf]>=1.14.0" \
     "transformers>=4.36.0" \
     "wyoming>=1.5.0" \
     "zeroconf>=0.131.0" \
     "scipy"
 
-# Copy application files from the local rootfs/app folder to the container /app folder
+# Copy application files
 COPY rootfs/app /app
 COPY run.sh /run.sh
 
