@@ -1,10 +1,16 @@
 FROM python:3.11-slim-bookworm
 
-# 1. Add Debian Bookworm Backports
-# Required to get recent Intel Compute Runtime drivers for 13th Gen/Iris Xe
-RUN echo "deb http://deb.debian.org/debian bookworm-backports main contrib non-free-firmware" > /etc/apt/sources.list.d/backports.list
+# 1. Configure APT Repositories
+# Remove default source files to avoid conflicts/duplicates
+# Add 'non-free' and 'non-free-firmware' to both standard and backports
+RUN rm -f /etc/apt/sources.list.d/debian.sources && \
+    echo "deb http://deb.debian.org/debian bookworm main contrib non-free non-free-firmware" > /etc/apt/sources.list && \
+    echo "deb http://deb.debian.org/debian bookworm-updates main contrib non-free non-free-firmware" >> /etc/apt/sources.list && \
+    echo "deb http://deb.debian.org/debian-security bookworm-security main contrib non-free non-free-firmware" >> /etc/apt/sources.list && \
+    echo "deb http://deb.debian.org/debian bookworm-backports main contrib non-free non-free-firmware" > /etc/apt/sources.list.d/backports.list
 
 # 2. Install System Dependencies & Drivers
+# Now that 'non-free' is enabled, apt will successfully find intel-opencl-icd
 RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
     libgl1-mesa-glx \
@@ -21,7 +27,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 WORKDIR /app
 
 # 3. Install Python Dependencies
-# PINNED VERSIONS: Critical to prevent XML Serialization crashes with Whisper v3
+# Pinned versions to prevent XML Serialization errors (XML bug in 2024.5+)
 RUN pip install --no-cache-dir --upgrade pip && \
     pip install --no-cache-dir \
     "transformers==4.45.2" \
