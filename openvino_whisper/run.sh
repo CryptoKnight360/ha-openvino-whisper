@@ -3,6 +3,7 @@ set -e
 
 CONFIG_PATH="/data/options.json"
 
+# Parse configuration
 if [ -f "$CONFIG_PATH" ]; then
     MODEL=$(jq --raw-output '.model // "openai/whisper-large-v3-turbo"' "$CONFIG_PATH")
     DEVICE=$(jq --raw-output '.device // "GPU"' "$CONFIG_PATH")
@@ -20,8 +21,8 @@ echo "Model: $MODEL"
 echo "Device: $DEVICE"
 
 # ---------------------------------------------------------------------
-# CLEANUP
-# Wiping cache is MANDATORY because previous crashes left broken files.
+# CLEANUP (CRITICAL)
+# Wiping cache to remove any files corrupted by previous library versions
 # ---------------------------------------------------------------------
 if [ -d "/data/model_cache" ]; then
     echo "Wiping model cache to ensure clean conversion..."
@@ -31,16 +32,23 @@ mkdir -p /data/model_cache
 
 # ---------------------------------------------------------------------
 # PERMISSION FIXER
+# Dynamically maps the container user to the host hardware group
 # ---------------------------------------------------------------------
 RENDER_NODE="/dev/dri/renderD128"
 if [ -e "$RENDER_NODE" ]; then
+    echo "Configuring permissions for $RENDER_NODE"
     RENDER_GID=$(stat -c '%g' "$RENDER_NODE")
+    
     if ! getent group "$RENDER_GID" > /dev/null; then
         groupadd -g "$RENDER_GID" render_custom
     fi
     usermod -aG "$RENDER_GID" root
+else
+    echo "WARNING: GPU Render node not found!"
 fi
 
+# ---------------------------------------------------------------------
+# HARDWARE CHECK
 # ---------------------------------------------------------------------
 echo "Checking Intel Graphics Status (clinfo)..."
 if command -v clinfo &> /dev/null; then
