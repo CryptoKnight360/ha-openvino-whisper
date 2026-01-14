@@ -18,12 +18,11 @@ class OpenVINOWhisperServer(AsyncServer):
             chunk = np.frombuffer(event.audio, dtype=np.int16).astype(np.float32) / 32768.0
             self.audio_data.append(chunk)
         elif isinstance(event, AudioStop):
-            if not self.audio_data:
-                return True
-            full_audio = np.concatenate(self.audio_data)
-            result = self.pipe.generate(full_audio)
-            await self.write_event(Transcript(text=result.texts[0]), stdout)
-            self.audio_data = [] 
+            if self.audio_data:
+                full_audio = np.concatenate(self.audio_data)
+                result = self.pipe.generate(full_audio)
+                await self.write_event(Transcript(text=result.texts[0]), stdout)
+                self.audio_data = [] 
         return True
 
 if __name__ == "__main__":
