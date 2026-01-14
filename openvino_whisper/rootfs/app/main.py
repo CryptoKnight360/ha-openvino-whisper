@@ -9,7 +9,7 @@ from typing import Optional
 
 import torch
 from wyoming.event import Event
-from wyoming.info import Describe, Info, AsrProgram, AsrModel, Attrib
+from wyoming.info import Describe, Info, AsrProgram, AsrModel, Attribution
 from wyoming.server import AsyncServer, AsyncEventHandler
 from wyoming.audio import AudioChunk, AudioStart, AudioStop
 
@@ -63,7 +63,7 @@ class OpenVINOEventHandler(AsyncEventHandler):
                         AsrProgram(
                             name="OpenVINO Whisper",
                             description="Intel OpenVINO accelerated Whisper",
-                            attribution=Attrib(
+                            attribution=Attribution(
                                 name="CryptoKnight360",
                                 url="https://github.com/CryptoKnight360/ha-openvino-whisper",
                             ),
@@ -72,7 +72,7 @@ class OpenVINOEventHandler(AsyncEventHandler):
                                 AsrModel(
                                     name=self.cli_args.model,
                                     description=self.cli_args.model,
-                                    attribution=Attrib(
+                                    attribution=Attribution(
                                         name="OpenAI",
                                         url="https://github.com/openai/whisper",
                                     ),
@@ -95,16 +95,12 @@ class OpenVINOEventHandler(AsyncEventHandler):
         _LOGGER.debug("Processing %s bytes of audio", len(self.state.audio_bytes))
 
         # Save to temp wav file for processing (simplest way to handle headers/resampling)
-        # Note: Wyoming sends raw 16-bit 16khz PCM mono usually.
         with tempfile.NamedTemporaryFile(suffix=".wav", mode="wb") as temp_wav:
             with wave.open(temp_wav.name, "wb") as wav_file:
                 wav_file.setnchannels(1)
                 wav_file.setsampwidth(2)  # 16-bit
                 wav_file.setframerate(16000)
                 wav_file.writeframes(self.state.audio_bytes)
-            
-            # Read back using soundfile or similar handled by transformers processor
-            # Actually, we can feed raw bytes if we structure it right, but file is safer for ffmpeg backend.
             
             try:
                 # Use asyncio.to_thread for blocking inference
@@ -126,7 +122,6 @@ class OpenVINOEventHandler(AsyncEventHandler):
 
     def _run_inference(self, audio_path: str) -> str:
         # Pre-process audio
-        # Note: The processor handles loading the audio file via ffmpeg internally
         input_features = self.processor(
             audio_path, 
             return_tensors="pt", 
