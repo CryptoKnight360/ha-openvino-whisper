@@ -1,32 +1,36 @@
-#!/usr/bin/with-contenv bashio
+#!/bin/bash
+
+# Enable strict error handling
+set -e
 
 echo "Starting Wyoming OpenVINO Whisper..."
 
-# Read configuration from Home Assistant's options.json (mapped by bashio or standard locations)
 CONFIG_PATH="/data/options.json"
 
-# Defaults
-MODEL="distil-whisper/distil-small.en"
-DEVICE="GPU"
-LANGUAGE="en"
-BEAM_SIZE=1
-
+# Check if config exists, otherwise use defaults (useful for local testing outside HA)
 if [ -f "$CONFIG_PATH" ]; then
-    # Parse JSON using python one-liner if jq is not available, or simple grep for simple setup
-    # Using python to parse options safely
-    MODEL=$(python3 -c "import json; print(json.load(open('$CONFIG_PATH'))['model'])")
-    DEVICE=$(python3 -c "import json; print(json.load(open('$CONFIG_PATH'))['device'])")
-    LANGUAGE=$(python3 -c "import json; print(json.load(open('$CONFIG_PATH'))['language'])")
-    BEAM_SIZE=$(python3 -c "import json; print(json.load(open('$CONFIG_PATH'))['beam_size'])")
+    MODEL=$(jq --raw-output '.model // "openai/whisper-large-v3-turbo"' $CONFIG_PATH)
+    DEVICE=$(jq --raw-output '.device // "GPU"' $CONFIG_PATH)
+    LANGUAGE=$(jq --raw-output '.language // "en"' $CONFIG_PATH)
+    BEAM_SIZE=$(jq --raw-output '.beam_size // 1' $CONFIG_PATH)
+else
+    echo "Config file not found, using defaults."
+    MODEL="openai/whisper-large-v3-turbo"
+    DEVICE="GPU"
+    LANGUAGE="en"
+    BEAM_SIZE=1
 fi
 
+echo "--------------------------------"
 echo "Configuration:"
 echo "  Model: $MODEL"
 echo "  Device: $DEVICE"
 echo "  Language: $LANGUAGE"
 echo "  Beam Size: $BEAM_SIZE"
+echo "--------------------------------"
 
 # Start the application
+# We use exec so the python process becomes PID 1 (receives signals correctly)
 exec python3 /app/main.py \
     --model "$MODEL" \
     --device "$DEVICE" \
