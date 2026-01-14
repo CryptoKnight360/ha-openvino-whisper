@@ -1,6 +1,6 @@
 {
   "name": "Wyoming OpenVINO Whisper",
-  "version": "2.4.1",
+  "version": "2.4.2",
   "slug": "openvino_whisper",
   "description": "Whisper Speech-to-Text accelerated by Intel OpenVINO. Optimized for LattePanda Sigma (Intel 13th Gen).",
   "url": "https://github.com/CryptoKnight360/ha-openvino-whisper",
