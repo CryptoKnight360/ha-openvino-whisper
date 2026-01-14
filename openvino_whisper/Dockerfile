@@ -1,10 +1,9 @@
 FROM python:3.11-slim-bookworm
 
 # Install system dependencies
-# libgl1-mesa-glx / libglib2.0-0: for OpenCV/OpenVINO
-# jq: for config parsing
-# ocl-icd-libopencl1: Fixes "libOpenCL.so.1 not found"
-# intel-opencl-icd: Drivers for Intel Iris Xe GPU
+# intel-opencl-icd: This IS the driver for Integrated Iris Xe Graphics.
+# clinfo: Utility to verify the iGPU is visible.
+# jq: For config parsing.
 RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
     libgl1-mesa-glx \
@@ -12,6 +11,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     jq \
     ocl-icd-libopencl1 \
     intel-opencl-icd \
+    clinfo \
     && rm -rf /var/lib/apt/lists/*
 
 # Set working directory
