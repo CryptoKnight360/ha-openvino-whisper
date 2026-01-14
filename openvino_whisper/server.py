@@ -42,18 +42,18 @@ async def main():
     model_id = os.getenv("MODEL_ID")
     device = os.getenv("DEVICE")
     
+    _LOGGER.info(f"Loading {model_id} on {device}")
     model = OVModelForSpeechSeq2Seq.from_pretrained(model_id, device=device, export=True, compile=True)
     proc = AutoProcessor.from_pretrained(model_id)
     pipe = pipeline("automatic-speech-recognition", model=model, feature_extractor=proc.feature_extractor, tokenizer=proc.tokenizer)
 
     attr = Attribution(name="OpenAI", url="https://openai.com")
     wyoming_info = Info(asr=[AsrProgram(
-        name="openvino-whisper", description="OpenVINO STT", attribution=attr, version="1.0.0", installed=True,
-        models=[AsrModel(name="whisper-large-v3-turbo", languages=["en"], attribution=attr, installed=True, version="1.0.0")]
+        name="openvino-whisper", version="1.0.0", installed=True, attribution=attr,
+        models=[AsrModel(name=model_id, languages=["en"], attribution=attr, installed=True, version="1.0.0")]
     )])
 
     server = AsyncServer.from_uri("tcp://0.0.0.0:10300")
-    # Corrected lambda arguments
     await server.run(lambda r, w: OpenVINOWhisperHandler(wyoming_info, pipe, r, w))
 
 if __name__ == "__main__":
