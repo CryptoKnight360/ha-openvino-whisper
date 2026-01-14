@@ -21,18 +21,13 @@ echo "Starting OpenVINO Whisper..."
 echo "Model: $MODEL"
 echo "Device: $DEVICE"
 
-# HARDWARE CHECK: Set permissions for Integrated Graphics
-if [ -d "/dev/dri" ]; then
-    echo "Setting permissions for /dev/dri..."
-    chmod -R 666 /dev/dri
-fi
-
-# DEBUG: Print available OpenCL devices (Iris Xe should appear here)
-echo "Checking for OpenCL Devices (Iris Xe):"
+# DEBUG: Check if the system sees the iGPU
+# We expect to see "Intel(R) Iris(R) Xe Graphics"
+echo "Checking OpenCL devices..."
 if command -v clinfo &> /dev/null; then
-    clinfo | grep "Device Name" || echo "No OpenCL Devices Found via clinfo"
+    clinfo | grep -E "Platform Name|Device Name" || echo "No OpenCL devices found."
 else
-    echo "clinfo not found, skipping check."
+    echo "clinfo not found."
 fi
 
 # Ensure cache directory exists
