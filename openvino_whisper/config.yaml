@@ -1,6 +1,6 @@
 name: "OpenVINO Whisper Large-Turbo"
 description: "OpenVINO accelerated Whisper for LattePanda using Wyoming Protocol"
-version: "2.0.0"
+version: "2.0.1"
 slug: "openvino_whisper"
 arch:
   - amd64
