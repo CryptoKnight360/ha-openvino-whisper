@@ -1,28 +1,22 @@
-FROM ghcr.io/home-assistant/amd64-base-debian:bookworm
+FROM ghcr.io/home-assistant/amd64-base:3.19
 
-# Install Python and dependencies via apt-get (Confirmed working on Debian)
+# Install OpenVINO and Python dependencies
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    python3 \
-    python3-pip \
-    python3-dev \
-    ffmpeg \
-    intel-opencl-icd \
+    python3 python3-pip \
+    libsndfile1 \
     && rm -rf /var/lib/apt/lists/*
 
-ENV PIP_BREAK_SYSTEM_PACKAGES=1
-
-# Install requirements as per the OpenVINO report
-RUN pip3 install --no-cache-dir torch --index-url https://download.pytorch.org/whl/cpu && \
-    pip3 install --no-cache-dir \
-    "optimum-intel[openvino]" \
-    "transformers>=4.45.0" \
-    "wyoming==1.8.0" \
-    "numpy<2.0.0"
+# Install Wyoming and Optimum-Intel (OpenVINO backend for Transformers)
+RUN pip3 install --no-cache-dir \
+    wyoming==1.5.2 \
+    "optimum[openvino]" \
+    transformers \
+    accelerate \
+    librosa
 
 WORKDIR /app
-COPY server.py /app/server.py
-COPY rootfs /
+COPY wyoming_server.py .
+COPY run.sh /
+RUN chmod a+x /run.sh
 
-# Force executable permissions for S6 services
-RUN chmod -R 755 /etc/s6-overlay/s6-rc.d/ && \
-    chmod a+x /app/server.py
+ENTRYPOINT ["/run.sh"]
