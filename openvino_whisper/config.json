@@ -3,8 +3,7 @@
   "version": "1.2.1",
   "slug": "openvino_whisper",
   "description": "Whisper Speech-to-Text accelerated by Intel OpenVINO. Optimized for LattePanda Sigma.",
-  "url": "
-https://github.com/CryptoKnight360/ha-openvino-whisper",
+  "url": "https://github.com/CryptoKnight360/ha-openvino-whisper",
   "startup": "application",
   "arch": ["amd64"],
   "init": false,
