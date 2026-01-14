@@ -1,0 +1,33 @@
+{
+  "name": "Wyoming OpenVINO Whisper",
+  "version": "1.1.0",
+  "slug": "wyoming_openvino_whisper",
+  "description": "Whisper Speech-to-Text accelerated by Intel OpenVINO. Optimized for LattePanda Sigma (Iris Xe).",
+  "url": "https://github.com/your-username/wyoming-openvino-whisper",
+  "startup": "application",
+  "arch": ["amd64"],
+  "image": "wyoming-openvino-whisper",
+  "init": false,
+  "map": ["config:rw"],
+  "ports": {
+    "10300/tcp": 10300
+  },
+  "ports_description": {
+    "10300/tcp": "Wyoming Protocol Port"
+  },
+  "devices": [
+    "/dev/dri:/dev/dri"
+  ],
+  "options": {
+    "model": "openai/whisper-large-v3-turbo",
+    "device": "GPU",
+    "language": "en",
+    "beam_size": 1
+  },
+  "schema": {
+    "model": "list(openai/whisper-tiny|openai/whisper-base|openai/whisper-small|openai/whisper-medium|openai/whisper-large-v3|openai/whisper-large-v3-turbo|distil-whisper/distil-small.en|distil-whisper/distil-medium.en|distil-whisper/distil-large-v3)",
+    "device": "list(GPU|CPU|AUTO)",
+    "language": "str",
+    "beam_size": "int"
+  }
+}
