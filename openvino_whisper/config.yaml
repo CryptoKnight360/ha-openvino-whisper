@@ -1,14 +1,15 @@
 name: "OpenVINO Whisper Large-Turbo"
-description: "OpenVINO accelerated Whisper Large-v3-Turbo for LattePanda"
-version: "1.1.0"
+description: "OpenVINO accelerated Whisper for LattePanda using Wyoming Protocol"
+version: "2.0.0"
 slug: "openvino_whisper"
 arch:
   - amd64
-init: false
+startup: services
+boot: auto
 ports:
   10300/tcp: 10300
 options:
-  model: "bweng/whisper-large-v3-turbo-int8-ov" # Pre-optimized OpenVINO model
+  model: "large-v3-turbo"
   language: "en"
 schema:
   model: "str"
