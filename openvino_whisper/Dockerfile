@@ -1,17 +1,13 @@
-FROM ghcr.io/home-assistant/amd64-base-debian:bookworm
+FROM ghcr.io/home-assistant/amd64-base-python:3.12-bookworm
 
-# Install Python and dependencies
+# Install system dependencies
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    python3 \
-    python3-pip \
-    python3-dev \
-    ffmpeg \
-    intel-opencl-icd \
-    && rm -rf /var/lib/apt/lists/*
+    ffmpeg intel-opencl-icd && \
+    rm -rf /var/lib/apt/lists/*
 
 ENV PIP_BREAK_SYSTEM_PACKAGES=1
 
-# Install Wyoming and OpenVINO requirements
+# Install Wyoming and OpenVINO
 RUN pip3 install --no-cache-dir torch --index-url https://download.pytorch.org/whl/cpu && \
     pip3 install --no-cache-dir \
     "optimum-intel[openvino]" \
@@ -23,6 +19,6 @@ WORKDIR /app
 COPY server.py /app/server.py
 COPY rootfs /
 
-# CRITICAL: Force executable permissions on all S6-overlay scripts
+# Force executable permissions on all s6 scripts
 RUN chmod -R 755 /etc/s6-overlay/s6-rc.d/ && \
     chmod a+x /app/server.py
