@@ -1,12 +1,12 @@
 FROM ghcr.io/home-assistant/amd64-base-debian:bookworm
 
-# 1. Install system requirements
+# Install requirements
 RUN apt-get update && apt-get install -y --no-install-recommends \
     python3 python3-pip python3-dev build-essential cmake \
     libsndfile1 libvulkan1 libgbm1 libusb-1.0-0-dev \
     && rm -rf /var/lib/apt/lists/*
 
-# 2. Install OpenVINO stack
+# Install Python stack
 RUN pip3 install --no-cache-dir --upgrade pip --break-system-packages && \
     pip3 install --no-cache-dir --break-system-packages \
     wyoming==1.5.2 \
@@ -15,13 +15,10 @@ RUN pip3 install --no-cache-dir --upgrade pip --break-system-packages && \
     numpy
 
 WORKDIR /app
-
-# 3. Copy only the necessary files
 COPY wyoming_server.py .
 COPY run.sh /
+RUN chmod a+x /run.sh
 
-# 4. CRITICAL: Automatically wipe any broken folders/services from previous attempts
-RUN rm -rf /etc/s6-overlay/s6-rc.d/ov_* /etc/services.d/ov_* && chmod a+x /run.sh
-
+# This satisfies the s6-overlay/PID 1 requirement
 ENTRYPOINT ["/init"]
 CMD ["/run.sh"]
