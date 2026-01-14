@@ -54,6 +54,7 @@ async def main():
     )])
 
     server = AsyncServer.from_uri("tcp://0.0.0.0:10300")
+    # Lambda takes r, w to prevent TypeError
     await server.run(lambda r, w: OpenVINOWhisperHandler(wyoming_info, pipe, r, w))
 
 if __name__ == "__main__":
