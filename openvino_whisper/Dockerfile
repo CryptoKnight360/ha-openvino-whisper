@@ -1,24 +1,34 @@
-FROM ghcr.io/home-assistant/amd64-base-debian:bookworm
+FROM python:3.11-slim-bookworm
 
-# Install requirements
+# Install system dependencies
+# libgl1-mesa-glx and libglib2.0-0 are required for OpenVINO/OpenCV
+# jq is installed to help with parsing config in shell scripts if needed
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    python3 python3-pip python3-dev build-essential cmake \
-    libsndfile1 libvulkan1 libgbm1 libusb-1.0-0-dev \
+    build-essential \
+    libgl1-mesa-glx \
+    libglib2.0-0 \
+    jq \
     && rm -rf /var/lib/apt/lists/*
 
-# Install Python stack
-RUN pip3 install --no-cache-dir --upgrade pip --break-system-packages && \
-    pip3 install --no-cache-dir --break-system-packages \
-    wyoming==1.5.2 \
-    "optimum[openvino]" \
-    openvino-genai==2025.0.0 \
-    numpy
-
+# Set working directory
 WORKDIR /app
-COPY wyoming_server.py .
-COPY run.sh /
-RUN chmod a+x /run.sh
 
-# This satisfies the s6-overlay/PID 1 requirement
-ENTRYPOINT ["/init"]
-CMD ["/run.sh"]
+# Install Python dependencies
+# optimum-intel[openvino] installs the necessary Intel backends
+# wyoming is the protocol library
+# zeroconf is for auto-discovery
+RUN pip install --no-cache-dir --upgrade pip && \
+    pip install --no-cache-dir \
+    "optimum-intel[openvino,nncf]" \
+    "transformers>=4.36.0" \
+    "wyoming>=1.5.0" \
+    "zeroconf>=0.131.0" \
+    "scipy"
+
+# Copy application files from the local rootfs/app folder to the container /app folder
+COPY rootfs/app /app
+COPY run.sh /run.sh
+
+RUN chmod +x /run.sh
+
+CMD [ "/run.sh" ]
