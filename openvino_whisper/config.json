@@ -1,12 +1,12 @@
 {
   "name": "Wyoming OpenVINO Whisper",
-  "version": "1.1.0",
-  "slug": "wyoming_openvino_whisper",
-  "description": "Whisper Speech-to-Text accelerated by Intel OpenVINO. Optimized for LattePanda Sigma (Iris Xe).",
-  "url": "https://github.com/your-username/wyoming-openvino-whisper",
+  "version": "1.2.0",
+  "slug": "openvino_whisper",
+  "description": "Whisper Speech-to-Text accelerated by Intel OpenVINO. Optimized for LattePanda Sigma.",
+  "url": "https://github.com/CryptoKnight360/ha-openvino-whisper",
   "startup": "application",
   "arch": ["amd64"],
-  "image": "wyoming-openvino-whisper",
+  "image": "openvino-whisper",
   "init": false,
   "map": ["config:rw"],
   "ports": {
