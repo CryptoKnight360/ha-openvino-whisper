@@ -1,7 +1,9 @@
-FROM ghcr.io/home-assistant/amd64-base-python:3.12-bookworm
+FROM ghcr.io/home-assistant/amd64-base-debian:bookworm
 
-# Install system dependencies required for OpenVINO and Audio
+# Install Python and system dependencies required for OpenVINO and Audio
 RUN apt-get update && apt-get install -y --no-install-recommends \
+    python3 \
+    python3-pip \
     libsndfile1 \
     libvulkan1 \
     libgbm1 \
@@ -9,8 +11,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 
 # Install Wyoming, Faster-Whisper, and OpenVINO runtime
+# --break-system-packages is required for Debian Bookworm based images
 RUN pip3 install --no-cache-dir --upgrade pip && \
-    pip3 install --no-cache-dir \
+    pip3 install --no-cache-dir --break-system-packages \
     wyoming-faster-whisper \
     openvino==2024.5.0 \
     ctranslate2>=4.4.0
