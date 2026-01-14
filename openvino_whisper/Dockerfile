@@ -1,8 +1,8 @@
 FROM python:3.11-slim-bookworm
 
-# 1. Configure APT Repositories (CRITICAL FIX)
-# We remove the default .sources file and write a standard sources.list.
-# We explicitly include 'non-free' and 'non-free-firmware' so apt can find the Intel drivers.
+# 1. Configure APT Repositories
+# We remove the default source file and create a new one listing 'non-free' and 'non-free-firmware'.
+# This allows apt to find the proprietary Intel drivers.
 RUN rm -f /etc/apt/sources.list.d/debian.sources && \
     echo "deb http://deb.debian.org/debian bookworm main contrib non-free non-free-firmware" > /etc/apt/sources.list && \
     echo "deb http://deb.debian.org/debian bookworm-updates main contrib non-free non-free-firmware" >> /etc/apt/sources.list && \
@@ -10,8 +10,8 @@ RUN rm -f /etc/apt/sources.list.d/debian.sources && \
     echo "deb http://deb.debian.org/debian bookworm-backports main contrib non-free non-free-firmware" > /etc/apt/sources.list.d/backports.list
 
 # 2. Install System Dependencies & Drivers
-# We pull intel-opencl-icd and intel-level-zero-gpu from backports.
-# This provides the Compute Runtime required for 13th Gen (Raptor Lake).
+# CRITICAL FIX: We install 'intel-opencl-icd' from backports (it supports 13th Gen).
+# We DO NOT install 'intel-level-zero-gpu' because it is missing from backports and caused Exit 100.
 RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
     libgl1-mesa-glx \
@@ -21,14 +21,13 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libnuma1 \
     && apt-get install -y --no-install-recommends -t bookworm-backports \
     intel-opencl-icd \
-    intel-level-zero-gpu \
     && rm -rf /var/lib/apt/lists/*
 
 # Set working directory
 WORKDIR /app
 
 # 3. Install Python Dependencies
-# PINNED VERSIONS: Prevents "Unsupported attribute type: inputs" error.
+# Pinned versions prevent the "Unsupported attribute type" XML error.
 RUN pip install --no-cache-dir --upgrade pip && \
     pip install --no-cache-dir \
     "transformers==4.45.2" \
