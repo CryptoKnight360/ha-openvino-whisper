@@ -1,10 +1,8 @@
 #!/bin/bash
 set -e
 
-# Config path
 CONFIG_PATH="/data/options.json"
 
-# Parse configuration
 if [ -f "$CONFIG_PATH" ]; then
     MODEL=$(jq --raw-output '.model // "openai/whisper-large-v3-turbo"' "$CONFIG_PATH")
     DEVICE=$(jq --raw-output '.device // "GPU"' "$CONFIG_PATH")
@@ -21,19 +19,17 @@ echo "Starting OpenVINO Whisper..."
 echo "Model: $MODEL"
 echo "Device: $DEVICE"
 
-# DEBUG: Check if the system sees the iGPU
-# We expect to see "Intel(R) Iris(R) Xe Graphics"
-echo "Checking OpenCL devices..."
+echo "---------------------------------------------------"
+echo "Checking Intel Graphics Status (clinfo)..."
 if command -v clinfo &> /dev/null; then
-    clinfo | grep -E "Platform Name|Device Name" || echo "No OpenCL devices found."
+    clinfo | grep -E "Platform Name|Device Name" || echo "WARNING: clinfo returned no devices."
 else
-    echo "clinfo not found."
+    echo "clinfo not installed."
 fi
+echo "---------------------------------------------------"
 
-# Ensure cache directory exists
 mkdir -p /data/model_cache
 
-# Start Python App
 exec python3 /app/main.py \
     --model "$MODEL" \
     --device "$DEVICE" \
