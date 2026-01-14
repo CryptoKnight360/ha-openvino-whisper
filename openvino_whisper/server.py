@@ -42,7 +42,6 @@ async def main():
     model_id = os.getenv("MODEL_ID")
     device = os.getenv("DEVICE")
     
-    _LOGGER.info(f"Loading {model_id} on {device}")
     model = OVModelForSpeechSeq2Seq.from_pretrained(model_id, device=device, export=True, compile=True)
     proc = AutoProcessor.from_pretrained(model_id)
     pipe = pipeline("automatic-speech-recognition", model=model, feature_extractor=proc.feature_extractor, tokenizer=proc.tokenizer)
@@ -54,7 +53,7 @@ async def main():
     )])
 
     server = AsyncServer.from_uri("tcp://0.0.0.0:10300")
-    # Lambda FIXED: accepts stream arguments r, w
+    # Lambda accepts r, w to prevent positional argument error
     await server.run(lambda r, w: OpenVINOWhisperHandler(wyoming_info, pipe, r, w))
 
 if __name__ == "__main__":
