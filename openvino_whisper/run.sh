@@ -21,6 +21,7 @@ echo "Device: $DEVICE"
 
 echo "---------------------------------------------------"
 echo "Checking Intel Graphics Status (clinfo)..."
+# We expect to see "Intel(R) Iris(R) Xe Graphics"
 if command -v clinfo &> /dev/null; then
     clinfo | grep -E "Platform Name|Device Name" || echo "WARNING: clinfo returned no devices."
 else
