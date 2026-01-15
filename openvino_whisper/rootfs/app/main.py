@@ -12,6 +12,8 @@ from wyoming.event import Event
 from wyoming.info import Describe, Info, AsrProgram, AsrModel, Attribution
 from wyoming.server import AsyncServer, AsyncEventHandler
 from wyoming.audio import AudioChunk, AudioStart, AudioStop
+# FIX: Added Zeroconf so HA finds it automatically on the new port
+from wyoming.zeroconf import register_server
 
 from transformers import AutoProcessor
 from optimum.intel.openvino import OVModelForSpeechSeq2Seq
@@ -78,6 +80,7 @@ class OpenVINOEventHandler(AsyncEventHandler):
                                     ),
                                     installed=True,
                                     languages=[self.cli_args.language],
+                                    version="1.0"  # <-- FIX: This caused the crash previously
                                 )
                             ],
                         )
@@ -94,7 +97,7 @@ class OpenVINOEventHandler(AsyncEventHandler):
 
         _LOGGER.debug("Processing %s bytes of audio", len(self.state.audio_bytes))
 
-        # Save to temp wav file for processing (simplest way to handle headers/resampling)
+        # Save to temp wav file for processing
         with tempfile.NamedTemporaryFile(suffix=".wav", mode="wb") as temp_wav:
             with wave.open(temp_wav.name, "wb") as wav_file:
                 wav_file.setnchannels(1)
@@ -103,14 +106,13 @@ class OpenVINOEventHandler(AsyncEventHandler):
                 wav_file.writeframes(self.state.audio_bytes)
             
             try:
-                # Use asyncio.to_thread for blocking inference
+                # Run inference in a thread to prevent blocking the event loop
                 text = await asyncio.to_thread(
                     self._run_inference, temp_wav.name
                 )
                 
                 _LOGGER.info("Transcription: %s", text)
                 
-                # Send back transcript
                 await self.write_event(
                     Event(
                         type="transcript",
@@ -121,21 +123,18 @@ class OpenVINOEventHandler(AsyncEventHandler):
                 _LOGGER.error("Inference failed: %s", e)
 
     def _run_inference(self, audio_path: str) -> str:
-        # Pre-process audio
         input_features = self.processor(
             audio_path, 
             return_tensors="pt", 
             sampling_rate=16000
         ).input_features.to(self.model.device)
 
-        # Generate token ids
         predicted_ids = self.model.generate(
             input_features, 
             language=self.cli_args.language,
             num_beams=self.cli_args.beam_size
         )
 
-        # Decode token ids to text
         transcription = self.processor.batch_decode(
             predicted_ids, 
             skip_special_tokens=True
@@ -150,13 +149,13 @@ async def main():
     parser.add_argument("--device", default="GPU")
     parser.add_argument("--language", default="en")
     parser.add_argument("--beam-size", type=int, default=1)
-    parser.add_argument("--uri", default="tcp://0.0.0.0:10300")
+    # FIX: Updated default port to 10400
+    parser.add_argument("--uri", default="tcp://0.0.0.0:10400")
     args = parser.parse_args()
 
     _LOGGER.info(f"Loading model {args.model} on {args.device}...")
     
     # Load Model (Optimized for OpenVINO)
-    # export=True forces conversion to IR format if not already present in cache
     model = OVModelForSpeechSeq2Seq.from_pretrained(
         args.model,
         device=args.device.upper(),
@@ -168,6 +167,18 @@ async def main():
 
     _LOGGER.info("Model loaded. Starting Wyoming server on %s", args.uri)
 
+    # FIX: Enable Zeroconf Auto-Discovery on the new port
+    try:
+        tcp_port = int(args.uri.split(":")[-1])
+        server_auth = register_server(
+            name="openvino_whisper",
+            port=tcp_port
+        )
+        _LOGGER.info("Zeroconf registration active on port %s", tcp_port)
+    except Exception as e:
+        _LOGGER.warning("Zeroconf registration failed: %s", e)
+        server_auth = None
+
     server = AsyncServer.from_uri(args.uri)
     
     try:
@@ -178,6 +189,9 @@ async def main():
         )
     except KeyboardInterrupt:
         pass
+    finally:
+        if server_auth:
+            server_auth.close()
 
 if __name__ == "__main__":
     asyncio.run(main())
