@@ -12,8 +12,6 @@ from wyoming.event import Event
 from wyoming.info import Describe, Info, AsrProgram, AsrModel, Attribution
 from wyoming.server import AsyncServer, AsyncEventHandler
 from wyoming.audio import AudioChunk, AudioStart, AudioStop
-# FIX: Added Zeroconf so HA finds it automatically on the new port
-from wyoming.zeroconf import register_server
 
 from transformers import AutoProcessor
 from optimum.intel.openvino import OVModelForSpeechSeq2Seq
@@ -80,7 +78,7 @@ class OpenVINOEventHandler(AsyncEventHandler):
                                     ),
                                     installed=True,
                                     languages=[self.cli_args.language],
-                                    version="1.0"  # <-- FIX: This caused the crash previously
+                                    version="1.0"  # CRITICAL FIX: Fixes connection crash
                                 )
                             ],
                         )
@@ -106,7 +104,7 @@ class OpenVINOEventHandler(AsyncEventHandler):
                 wav_file.writeframes(self.state.audio_bytes)
             
             try:
-                # Run inference in a thread to prevent blocking the event loop
+                # Run inference in thread
                 text = await asyncio.to_thread(
                     self._run_inference, temp_wav.name
                 )
@@ -149,13 +147,11 @@ async def main():
     parser.add_argument("--device", default="GPU")
     parser.add_argument("--language", default="en")
     parser.add_argument("--beam-size", type=int, default=1)
-    # FIX: Updated default port to 10400
-    parser.add_argument("--uri", default="tcp://0.0.0.0:10400")
+    parser.add_argument("--uri", default="tcp://0.0.0.0:10400") # PORT 10400
     args = parser.parse_args()
 
     _LOGGER.info(f"Loading model {args.model} on {args.device}...")
     
-    # Load Model (Optimized for OpenVINO)
     model = OVModelForSpeechSeq2Seq.from_pretrained(
         args.model,
         device=args.device.upper(),
@@ -167,18 +163,6 @@ async def main():
 
     _LOGGER.info("Model loaded. Starting Wyoming server on %s", args.uri)
 
-    # FIX: Enable Zeroconf Auto-Discovery on the new port
-    try:
-        tcp_port = int(args.uri.split(":")[-1])
-        server_auth = register_server(
-            name="openvino_whisper",
-            port=tcp_port
-        )
-        _LOGGER.info("Zeroconf registration active on port %s", tcp_port)
-    except Exception as e:
-        _LOGGER.warning("Zeroconf registration failed: %s", e)
-        server_auth = None
-
     server = AsyncServer.from_uri(args.uri)
     
     try:
@@ -189,9 +173,6 @@ async def main():
         )
     except KeyboardInterrupt:
         pass
-    finally:
-        if server_auth:
-            server_auth.close()
 
 if __name__ == "__main__":
     asyncio.run(main())
