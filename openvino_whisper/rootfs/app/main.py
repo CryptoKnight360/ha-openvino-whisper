@@ -95,7 +95,6 @@ class OpenVINOEventHandler(AsyncEventHandler):
 
         _LOGGER.debug("Processing %s bytes of audio", len(self.state.audio_bytes))
 
-        # Save to temp wav file for processing
         with tempfile.NamedTemporaryFile(suffix=".wav", mode="wb") as temp_wav:
             with wave.open(temp_wav.name, "wb") as wav_file:
                 wav_file.setnchannels(1)
@@ -104,7 +103,6 @@ class OpenVINOEventHandler(AsyncEventHandler):
                 wav_file.writeframes(self.state.audio_bytes)
             
             try:
-                # Run inference in thread
                 text = await asyncio.to_thread(
                     self._run_inference, temp_wav.name
                 )
@@ -147,12 +145,11 @@ async def main():
     parser.add_argument("--device", default="GPU")
     parser.add_argument("--language", default="en")
     parser.add_argument("--beam-size", type=int, default=1)
-    parser.add_argument("--uri", default="tcp://0.0.0.0:10400")
+    parser.add_argument("--uri", default="tcp://0.0.0.0:10500") # PORT 10500
     args = parser.parse_args()
 
     _LOGGER.info(f"Loading model {args.model} on {args.device}...")
     
-    # Load Model (Optimized for OpenVINO)
     model = OVModelForSpeechSeq2Seq.from_pretrained(
         args.model,
         device=args.device.upper(),
