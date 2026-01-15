@@ -152,7 +152,7 @@ async def main():
     parser.add_argument("--device", default="GPU")
     parser.add_argument("--language", default="en")
     parser.add_argument("--beam-size", type=int, default=1)
-    parser.add_argument("--uri", default="tcp://0.0.0.0:10300")
+    parser.add_argument("--uri", default="tcp://0.0.0.0:10555") # Port 10555
     args = parser.parse_args()
 
     _LOGGER.info(f"Loading model {args.model} on {args.device}...")
