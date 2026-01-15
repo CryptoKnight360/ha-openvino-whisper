@@ -78,7 +78,7 @@ class OpenVINOEventHandler(AsyncEventHandler):
                                     ),
                                     installed=True,
                                     languages=[self.cli_args.language],
-                                    version="1.0"  # CRITICAL FIX: Fixes connection crash
+                                    version="1.0"
                                 )
                             ],
                         )
@@ -147,11 +147,12 @@ async def main():
     parser.add_argument("--device", default="GPU")
     parser.add_argument("--language", default="en")
     parser.add_argument("--beam-size", type=int, default=1)
-    parser.add_argument("--uri", default="tcp://0.0.0.0:10400") # PORT 10400
+    parser.add_argument("--uri", default="tcp://0.0.0.0:10400")
     args = parser.parse_args()
 
     _LOGGER.info(f"Loading model {args.model} on {args.device}...")
     
+    # Load Model (Optimized for OpenVINO)
     model = OVModelForSpeechSeq2Seq.from_pretrained(
         args.model,
         device=args.device.upper(),
