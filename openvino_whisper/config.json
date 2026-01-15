@@ -1,6 +1,6 @@
 {
   "name": "Wyoming OpenVINO Whisper",
-  "version": "2.9.0",
+  "version": "3.0",
   "slug": "openvino_whisper",
   "description": "Whisper Speech-to-Text accelerated by Intel OpenVINO. Uses Host Networking for stability.",
   "url": "https://github.com/CryptoKnight360/ha-openvino-whisper",
