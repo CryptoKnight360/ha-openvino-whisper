@@ -4,6 +4,7 @@ import logging
 import sys
 import tempfile
 import wave
+import warnings
 from pathlib import Path
 from typing import Optional
 
@@ -16,10 +17,16 @@ from wyoming.audio import AudioChunk, AudioStart, AudioStop
 from transformers import AutoProcessor
 from optimum.intel.openvino import OVModelForSpeechSeq2Seq
 
+# -----------------------------------------------------------------------------
+# SILENCE WARNINGS
+# -----------------------------------------------------------------------------
+logging.getLogger("transformers").setLevel(logging.ERROR)
+warnings.filterwarnings("ignore", message=".*slow image processor.*")
+warnings.filterwarnings("ignore", category=UserWarning)
+warnings.filterwarnings("ignore", category=FutureWarning)
 _LOGGER = logging.getLogger(__name__)
 
 class State:
-    """Internal state for the Whisper event handler."""
     def __init__(self):
         self.audio_bytes = b""
         self.is_receiving = False
@@ -141,17 +148,15 @@ class OpenVINOEventHandler(AsyncEventHandler):
 async def main():
     logging.basicConfig(level=logging.INFO)
     parser = argparse.ArgumentParser()
-    # ERROR PREVENTION: Verified all use add_argument, NOT .add
     parser.add_argument("--model", required=True)
     parser.add_argument("--device", default="GPU")
     parser.add_argument("--language", default="en")
     parser.add_argument("--beam-size", type=int, default=1)
-    parser.add_argument("--uri", default="tcp://0.0.0.0:10500") # PORT 10500
+    parser.add_argument("--uri", default="tcp://0.0.0.0:10300")
     args = parser.parse_args()
 
     _LOGGER.info(f"Loading model {args.model} on {args.device}...")
     
-    # Load Model (Optimized for OpenVINO)
     model = OVModelForSpeechSeq2Seq.from_pretrained(
         args.model,
         device=args.device.upper(),
@@ -159,7 +164,6 @@ async def main():
         compile=True
     )
     
-    # FIX: Added use_fast=True to silence warning and use optimized tokenizer
     processor = AutoProcessor.from_pretrained(args.model, use_fast=True)
 
     _LOGGER.info("Model loaded. Starting Wyoming server on %s", args.uri)
