@@ -1,19 +1,14 @@
 {
   "name": "Wyoming OpenVINO Whisper",
-  "version": "2.5.2",
+  "version": "2.8.0",
   "slug": "openvino_whisper",
-  "description": "Whisper Speech-to-Text accelerated by Intel OpenVINO. Optimized for LattePanda Sigma.",
+  "description": "Whisper Speech-to-Text accelerated by Intel OpenVINO. Uses Host Networking for stability.",
   "url": "https://github.com/CryptoKnight360/ha-openvino-whisper",
   "startup": "application",
   "arch": ["amd64"],
   "init": false,
   "map": ["config:rw"],
-  "ports": {
-    "10400/tcp": 10400
-  },
-  "ports_description": {
-    "10400/tcp": "Wyoming Protocol Port"
-  },
+  "host_network": true,
   "devices": [
     "/dev/dri:/dev/dri"
   ],
