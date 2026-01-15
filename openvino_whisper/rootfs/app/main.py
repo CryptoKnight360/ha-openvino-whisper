@@ -142,10 +142,10 @@ async def main():
     logging.basicConfig(level=logging.INFO)
     parser = argparse.ArgumentParser()
     parser.add_argument("--model", required=True)
-    parser.add_argument("--device", default="GPU")
+    parser.add-argument("--device", default="GPU")
     parser.add_argument("--language", default="en")
     parser.add_argument("--beam-size", type=int, default=1)
-    parser.add_argument("--uri", default="tcp://0.0.0.0:10500") # PORT 10500
+    parser.add_argument("--uri", default="tcp://0.0.0.0:10500")
     args = parser.parse_args()
 
     _LOGGER.info(f"Loading model {args.model} on {args.device}...")
@@ -157,7 +157,8 @@ async def main():
         compile=True
     )
     
-    processor = AutoProcessor.from_pretrained(args.model)
+    # OPTIMIZATION: Use the fast (Rust-based) processor
+    processor = AutoProcessor.from_pretrained(args.model, use_fast=True)
 
     _LOGGER.info("Model loaded. Starting Wyoming server on %s", args.uri)
 
